@@ -6,7 +6,7 @@ A local control room for the commands that keep running. Start, stop, restart an
 
 **Windows: double-click `launch.cmd`** in this folder. It starts the server in the background, waits until it is ready, and opens your default browser. If p-dash is already running, it simply opens it. On first use it installs missing dependencies and builds the dashboard if needed. Node.js 22+ must be installed.
 
-For a single owner script, double-click `run.cmd` instead. It opens p-dash and keeps the server attached to that window; closing the window stops p-dash.
+For a single owner script, double-click `run.cmd` instead. It opens p-dash and keeps the server attached to that window; closing the window stops p-dash. If an older p-dash instance is already using the port, the runner replaces it automatically.
 
 Double-click `stop.cmd` to stop the background server. From PowerShell, use `./scripts/stop.ps1`.
 

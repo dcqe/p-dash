@@ -9,7 +9,15 @@ $server = $null
 
 try {
     $existing = Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-    if ($existing) { throw "Port $port is already in use. Stop the existing p-dash first." }
+    if ($existing) {
+        $owner = Get-CimInstance Win32_Process -Filter "ProcessId = $($existing[0].OwningProcess)" -ErrorAction SilentlyContinue
+        if ($owner -and $owner.CommandLine -match 'server[\\/]index\.js') {
+            Stop-Process -Id $existing[0].OwningProcess -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Milliseconds 300
+        } else {
+            throw "Port $port is already in use by another application."
+        }
+    }
     $server = Start-Process -FilePath $node -ArgumentList ('"' + (Join-Path $projectRoot 'server\index.js') + '"') -WorkingDirectory $projectRoot -PassThru
     $dataRoot = if ($env:PDASH_DATA) { $env:PDASH_DATA } else { Join-Path $projectRoot '.pdash' }
     $tokenFile = Join-Path $dataRoot 'token'
