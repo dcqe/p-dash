@@ -59,6 +59,72 @@ button.primary,
 .terminal-tabs button.active {
   color: #d2d4d1;
 }
+
+/* Final neutral surface pass: remove the residual olive cast from fixed component colors. */
+body,
+.app-shell,
+main,
+.sidebar,
+.topbar,
+.command-card,
+.metrics,
+.terminal-section,
+.terminal-top,
+.terminal-bottom,
+.agent-card,
+.agent-doc,
+.dialog,
+.toast {
+  background-color: #171918;
+}
+.workspace,
+.nav-item.selected,
+.command-card.focused,
+.metric-icon,
+.metric-icon.green,
+.metric-icon.purple,
+.agent-card button,
+.terminal-tabs button.active,
+.terminal-filter,
+.empty-card {
+  background-color: #242625;
+}
+.command-card > code,
+.dialog input:not([type='checkbox']),
+.dialog textarea,
+.agent-doc pre {
+  background-color: #101111;
+  color: #d0d2cf;
+}
+button,
+.text-button,
+.icon,
+.new-group {
+  color: #c5c8c5;
+}
+.status,
+.runtime,
+.metric-caption,
+.card-path,
+.muted,
+.sidebar-hint,
+.local-status,
+.sidebar-footer,
+.page-footer,
+.source-legend > span,
+.terminal-bottom {
+  color: #929692;
+}
+.command-card,
+.metrics,
+.terminal-section,
+.dialog,
+.workspace,
+.agent-card,
+.agent-doc,
+.empty-card {
+  border-color: #3a3d3b;
+}
 .mobile-agent {
   display: none;
 }
