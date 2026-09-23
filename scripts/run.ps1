@@ -8,6 +8,10 @@ $node = (Get-Command node.exe -ErrorAction Stop).Source
 $server = $null
 
 try {
+    $vite = Join-Path $projectRoot 'node_modules\vite\bin\vite.js'
+    if (-not (Test-Path -LiteralPath $vite)) { throw 'Install dependencies with npm install before running p-dash.' }
+    & $node (Join-Path $projectRoot 'node_modules\vite\bin\vite.js') build
+    if ($LASTEXITCODE -ne 0) { throw 'The dashboard build failed.' }
     $existing = Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     if ($existing) {
         $owner = Get-CimInstance Win32_Process -Filter "ProcessId = $($existing[0].OwningProcess)" -ErrorAction SilentlyContinue

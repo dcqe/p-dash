@@ -139,6 +139,36 @@ button,
     margin: 6px 0 0;
   }
 }
+
+/* Last rule wins: the dashboard chrome is grayscale, while .terminal-body keeps ANSI colors. */
+.sidebar,
+.topbar,
+.page-heading,
+.metrics,
+.process-section,
+.command-card,
+.terminal-top,
+.terminal-filter,
+.terminal-bottom,
+.page-footer,
+.agent-page,
+.dialog,
+.toast {
+  filter: grayscale(1) !important;
+}
+.sidebar,
+.topbar,
+.command-card,
+.metrics,
+.terminal-top,
+.terminal-filter,
+.terminal-bottom,
+.dialog,
+.toast,
+.agent-card,
+.agent-doc {
+  background-image: none !important;
+}
 * {
   box-sizing: border-box;
 }
@@ -1278,4 +1308,13 @@ h2 {
   .agent-page {
     padding-top: 28px;
   }
+}
+
+/* Final grayscale pass. The terminal viewport is intentionally excluded to preserve ANSI colors. */
+.sidebar, .topbar, .page-heading, .metrics, .process-section, .command-card,
+.terminal-top, .terminal-filter, .terminal-bottom, .page-footer, .agent-page,
+.dialog, .toast { filter: grayscale(1) !important; }
+.sidebar, .topbar, .command-card, .metrics, .terminal-top, .terminal-filter,
+.terminal-bottom, .dialog, .toast, .agent-card, .agent-doc {
+  background-image: none !important;
 }
