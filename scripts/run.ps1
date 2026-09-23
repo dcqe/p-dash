@@ -22,7 +22,7 @@ try {
             throw "Port $port is already in use by another application."
         }
     }
-    $server = Start-Process -FilePath $node -ArgumentList ('"' + (Join-Path $projectRoot 'server\index.js') + '"') -WorkingDirectory $projectRoot -PassThru
+    $server = Start-Process -FilePath $node -ArgumentList ('"' + (Join-Path $projectRoot 'server\index.js') + '"') -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru
     $dataRoot = if ($env:PDASH_DATA) { $env:PDASH_DATA } else { Join-Path $projectRoot '.pdash' }
     $tokenFile = Join-Path $dataRoot 'token'
     $ready = $false
