@@ -183,7 +183,7 @@ function TerminalPane({ events, commands, processId, query, paused, onError }) {
           .filter((line) => !query || plain(line).toLowerCase().includes(query.toLowerCase()));
         for (const line of lines)
           term.writeln(
-            `\x1b[0m${/^\d{1,2}:\d{2}:\d{2}(?:\.\d+)?\b/.test(line) ? '' : `\x1b[38;2;94;113;100m${new Date(event.time).toLocaleTimeString('en-GB')}\x1b[0m  `}\x1b[38;2;${rgb.join(';')}m${(c?.name || 'process').padEnd(17)}\x1b[0m  ${line}\x1b[0m`,
+            `\x1b[0m${/^\d{1,2}:\d{2}:\d{2}(?:\.\d+)?\b/.test(plain(line).trim()) ? '' : `\x1b[38;2;94;113;100m${new Date(event.time).toLocaleTimeString('en-GB')}\x1b[0m  `}\x1b[38;2;${rgb.join(';')}m${(c?.name || 'process').padEnd(17)}\x1b[0m  ${line}\x1b[0m`,
           );
       }
     }
