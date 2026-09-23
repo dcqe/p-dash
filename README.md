@@ -4,13 +4,9 @@ A local control room for the commands that keep running. Start, stop, restart an
 
 ## Run
 
-**Windows: double-click `launch.cmd`** in this folder. It starts the server in the background, waits until it is ready, and opens your default browser. If p-dash is already running, it simply opens it. On first use it installs missing dependencies and builds the dashboard if needed. Node.js 22+ must be installed.
+**Windows: double-click `run.cmd`** in this folder. It starts p-dash, opens your default browser, and keeps the server attached to that window. Closing the window stops p-dash. If an older p-dash instance is already using the port, the runner replaces it automatically. Node.js 22+ must be installed.
 
-For a single owner script, double-click `run.cmd` instead. It opens p-dash and keeps the server attached to that window; closing the window stops p-dash. If an older p-dash instance is already using the port, the runner replaces it automatically.
-
-Double-click `stop.cmd` to stop the background server. From PowerShell, use `./scripts/stop.ps1`.
-
-From PowerShell you can also run `./launch.cmd`. Optional flags: `./launch.cmd -NoBrowser` starts without opening a browser; `./launch.cmd -Rebuild` rebuilds before starting (stop the existing server first). Startup logs are saved in `.pdash/launcher-server*.log`. The launcher respects `PDASH_PORT` and `PDASH_DATA`.
+From PowerShell, run `./run.cmd`. Use `./run.cmd -NoBrowser` to skip opening a browser. The runner respects `PDASH_PORT` and `PDASH_DATA`.
 
 Requires Node.js 22+ and npm. Windows 10 1809+/Windows 11, Linux and macOS are supported by the terminal backend. Integration tests have been run on Windows; Unix process-group behavior still needs testing on those platforms.
 
