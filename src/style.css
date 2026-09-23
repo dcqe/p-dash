@@ -89,6 +89,10 @@ main,
 .empty-card {
   background-color: #242625;
 }
+.agent-card {
+  background: #242625 !important;
+  background-image: none !important;
+}
 .command-card > code,
 .dialog input:not([type='checkbox']),
 .dialog textarea,
