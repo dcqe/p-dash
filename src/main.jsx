@@ -54,7 +54,8 @@ async function api(route, method = 'GET', body) {
   if (!res.ok) throw new Error(data.error);
   return data;
 }
-const palette = ['#a5d87a', '#9ba9ff', '#eeb978', '#70c6d4', '#e78fa7'];
+// Neutral UI accents keep the control room monochrome; terminal ANSI colors stay intact.
+const palette = ['#d6d8d4', '#b8bbb6', '#969a95', '#e4e5e2', '#7c817b'];
 const active = (c) => ['starting', 'running', 'stopping'].includes(c.status);
 const ago = (t) => {
   if (!t) return '—';
