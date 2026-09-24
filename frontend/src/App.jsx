@@ -91,17 +91,17 @@ export default function App() {
           <span className="brand-mark">
             <TerminalSquare size={21} />
           </span>
-          p-dash<span className="version">LOCAL</span>
+          p-dash
         </a>
         <div className="workspace">
           <span className="workspace-avatar">W</span>
           <div>
-            <strong>My workspace</strong>
-            <small>Local development</small>
+            <strong>Project</strong>
+            <small>Development</small>
           </div>
           <span className="workspace-dot" />
         </div>
-        <span className="section-label">WORKSPACE</span>
+        <span className="section-label">PROJECT</span>
         <button
           className={`nav-item ${selected === 'all' ? 'selected' : ''}`}
           onClick={() => {
@@ -151,7 +151,7 @@ export default function App() {
             <span className={`dot ${connection === 'live' ? 'running' : ''}`} />
             <span>
               {connection === 'live'
-                ? 'Local server connected'
+                ? 'Server connected'
                 : connection === 'connecting'
                   ? 'Connecting…'
                   : 'Reconnecting…'}
@@ -165,13 +165,13 @@ export default function App() {
       <main>
         <header className="topbar">
           <div>
-            <span>Workspace</span>
+            <span>Project</span>
             <ChevronRight size={13} />
             <strong>{group?.name || 'All commands'}</strong>
           </div>
           <span className="host-label">
             <Radio size={13} />
-            127.0.0.1<span className="key-label">LOCAL ONLY</span>
+            127.0.0.1
           </span>
         </header>
             <section className="page-heading">
@@ -411,13 +411,7 @@ export default function App() {
                 </span>
               </div>
             </section>
-            <footer className="page-footer">
-              <span>Made for the commands that keep going.</span>
-              <span>
-                <span className="dot running" />
-                Everything stays on your machine
-              </span>
-            </footer>
+            <div className="terminal-spacer" aria-hidden="true" />
       </main>
       {toast && (
         <div className="toast" role="status">

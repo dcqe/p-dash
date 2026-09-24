@@ -1,6 +1,6 @@
 # p-dash
 
-A local dashboard for long-running commands. One Quarkus application owns processes, persists bounded logs, streams terminals to a grey React UI, and exposes the same services as MCP tools.
+A dashboard for long-running commands. One Quarkus application owns processes, persists bounded logs, streams terminals to a grey React UI, and exposes the same services as MCP tools.
 
 ## Run
 
@@ -10,9 +10,12 @@ On this machine, run `./run.cmd` from this folder. The verified portable JDK and
 .\run.cmd                 # run in this console and open the browser
 .\run.cmd -NoBrowser      # same application, without opening a browser
 .\run.cmd -Rebuild        # rebuild the UI and Java app, including tests
+.\run.cmd -Dev            # Quarkus dev mode; Java changes reload without packaging
 ```
 
 Keep that console open. Ctrl+C stops p-dash and its managed commands. A Java owner watcher also shuts down if the runner disappears. Closing the browser does not stop processes. There is no detached Node server or second console. The PowerShell file in `scripts/` is an implementation helper; `run.cmd` is the single launcher.
+
+For faster backend iteration, `run.cmd -Dev` starts Quarkus dev mode. Java changes are hot reloaded by Quarkus. Frontend changes still require `npm run build` from `frontend/` because the dashboard is served as a packaged static resource; use the normal launcher when you need a production-like run.
 
 The launcher rebuilds when application sources or build inputs are newer than the packaged app. `-Rebuild` forces a rebuild even when timestamps have not changed.
 

@@ -2,7 +2,7 @@ let token;
 export async function api(route, method = 'GET', body) {
   if (!token) {
     const response = await fetch('/api/session');
-    if (!response.ok) throw new Error('Could not establish local session');
+    if (!response.ok) throw new Error('Could not establish a session');
     token = (await response.json()).token;
   }
   const res = await fetch('/api' + route, {

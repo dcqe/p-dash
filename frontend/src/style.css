@@ -282,6 +282,7 @@ main {
   margin-left: 232px;
   width: calc(100% - 232px);
   padding: 0 34px;
+  padding-bottom: 28px;
   max-width: 2000px;
 }
 .topbar {
@@ -325,7 +326,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 34px 0 27px;
+  padding: 14px 0 8px;
   gap: 20px;
 }
 .eyebrow {
@@ -422,7 +423,7 @@ h1 {
   text-align: right;
 }
 .process-section {
-  margin-top: 27px;
+  margin-top: 8px;
 }
 .section-toolbar {
   display: flex;
@@ -647,6 +648,7 @@ h2 {
 }
 .terminal-section {
   margin-top: 27px;
+  margin-bottom: 48px;
   border: 1px solid #3c3c3c;
   border-radius: 8px;
   overflow: hidden;
@@ -763,7 +765,7 @@ h2 {
   color: #c6c6c6;
 }
 .terminal-body {
-  height: 350px;
+  height: 320px;
   padding: 15px 8px 8px 16px;
   background: #141414;
 }
@@ -793,22 +795,9 @@ h2 {
   margin-left: 12px;
   color: #6c6c6c;
 }
-.page-footer {
-  display: flex;
-  justify-content: space-between;
-  color: #6f6f6f;
-  font-size: 9px;
-  padding: 20px 0 22px;
-}
-.page-footer > span:last-child {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.page-footer .dot {
-  width: 4px;
-  height: 4px;
-  background: #939393;
+.terminal-spacer {
+  height: 48px;
+  min-height: 48px;
 }
 .overlay {
   position: fixed;
@@ -1007,12 +996,12 @@ h2 {
     padding: 0 50px;
   }
   .terminal-body {
-    height: calc(100vh - 555px);
+    height: calc(100vh - 595px);
     min-height: 360px;
   }
   .page-heading {
-    padding-top: 43px;
-    padding-bottom: 35px;
+    padding-top: 14px;
+    padding-bottom: 8px;
   }
   .command-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -1091,7 +1080,7 @@ h2 {
     display: none;
   }
   .page-heading {
-    padding: 26px 0 20px;
+    padding: 14px 0 8px;
     align-items: flex-start;
   }
   h1 {
@@ -1139,16 +1128,12 @@ h2 {
     justify-content: space-between;
   }
   .terminal-body {
-    height: 340px;
+    height: 310px;
     padding-left: 8px;
   }
   .terminal-bottom {
     font-size: 8px;
     padding: 8px;
-  }
-  .page-footer {
-    font-size: 8px;
-    gap: 15px;
   }
   .terminal-tabs button {
     padding: 12px;

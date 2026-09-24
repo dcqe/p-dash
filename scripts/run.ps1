@@ -1,4 +1,4 @@
-param([switch]$NoBrowser, [switch]$Rebuild)
+param([switch]$NoBrowser, [switch]$Rebuild, [switch]$Dev)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
@@ -30,6 +30,20 @@ function Stop-PortOwners([int]$listenPort) {
 }
 Stop-PortOwners $port
 
+if ($Dev) {
+    $maven = Get-Command mvn.cmd -ErrorAction SilentlyContinue
+    if ($maven) { $mvn = $maven.Source } else {
+        $portableMaven = Get-ChildItem -LiteralPath (Join-Path $projectRoot '.tools') -Directory -Filter 'apache-maven-*' -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $portableMaven) { throw 'Install Maven 3.9+ and put mvn.cmd on PATH.' }
+        $mvn = Join-Path $portableMaven.FullName 'bin\mvn.cmd'
+    }
+    $env:PDASH_OWNER_PID = "$PID"
+    $env:PDASH_OPEN_BROWSER = if ($NoBrowser) { 'false' } else { 'true' }
+    Write-Host "p-dash dev mode runs in this window. Java changes reload through Quarkus."
+    & $mvn '-Dmaven.repo.local=.tools/m2' "-Dquarkus.http.port=$port" 'quarkus:dev'
+    exit $LASTEXITCODE
+}
+
 $appJar = Join-Path $projectRoot 'target\quarkus-app\app\p-dash-2.0.0.jar'
 $runtimeDat = Join-Path $projectRoot 'target\quarkus-app\quarkus\quarkus-application.dat'
 $stale = -not (Test-Path -LiteralPath $appJar) -or -not (Test-Path -LiteralPath $runtimeDat)
@@ -48,8 +62,17 @@ if ($Rebuild -or $stale -or -not (Test-Path -LiteralPath $jar)) {
     if ($Rebuild -or $frontendStale) {
         Push-Location (Join-Path $projectRoot 'frontend')
         try {
-            & npm.cmd ci --no-audit --no-fund
-            if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
+            # Keep startup fast when dependencies are already installed. npm ci
+            # deletes and recreates node_modules, so it is only needed for a
+            # fresh checkout or when the lockfile has changed.
+            $viteBin = Get-Item -LiteralPath 'node_modules\.bin\vite.cmd' -ErrorAction SilentlyContinue
+            $lockfile = Get-Item -LiteralPath 'package-lock.json' -ErrorAction SilentlyContinue
+            if (-not $viteBin -or ($lockfile -and $lockfile.LastWriteTimeUtc -gt $viteBin.LastWriteTimeUtc)) {
+                Write-Host 'Installing frontend dependencies...'
+                & npm.cmd ci --no-audit --no-fund
+                if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
+            }
+            Write-Host 'Building frontend...'
             & npm.cmd run build
             if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed.' }
         } finally { Pop-Location }
