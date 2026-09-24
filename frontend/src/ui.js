@@ -1,4 +1,4 @@
-// Neutral UI accents keep the control room monochrome; terminal ANSI colors stay intact.
+// Command identity accents; surrounding dashboard surfaces remain neutral grey.
 export const palette = [
   '#5B8FF9',
   '#61DDAA',
@@ -12,6 +12,8 @@ export const palette = [
   '#F08BB4',
 ];
 export const active = (c) => ['starting', 'running', 'stopping'].includes(c.status);
+export const statusLabel = (s) =>
+  (s || 'unknown').toLowerCase().replace(/(^|_)\w/g, (m) => m.toUpperCase());
 export const ago = (t) => {
   if (!t) return '—';
   const s = Math.max(0, Math.floor((Date.now() - new Date(t)) / 1000));

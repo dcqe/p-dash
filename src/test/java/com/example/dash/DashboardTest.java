@@ -46,9 +46,26 @@ class DashboardTest {
     return config;
   }
 
-  @Test void missingColorGetsStableVividAssignment() throws Exception {
-    var first = new ProcessConfig("color-check", "Color check", List.of("cmd.exe", "/c", "exit", "0"), Path.of("").toAbsolutePath().toString(), Map.of(), null, "pipe");
-    var second = new ProcessConfig("color-check", "Color check", first.command(), first.workingDirectory(), Map.of(), null, "pipe");
+  @Test
+  void missingColorGetsStableVividAssignment() throws Exception {
+    var first =
+        new ProcessConfig(
+            "color-check",
+            "Color check",
+            List.of("cmd.exe", "/c", "exit", "0"),
+            Path.of("").toAbsolutePath().toString(),
+            Map.of(),
+            null,
+            "pipe");
+    var second =
+        new ProcessConfig(
+            "color-check",
+            "Color check",
+            first.command(),
+            first.workingDirectory(),
+            Map.of(),
+            null,
+            "pipe");
     assertEquals(first.color(), second.color());
     assertNotEquals("#bcbcbc", first.color());
     assertTrue(first.color().matches("#[0-9A-F]{6}"));
@@ -60,6 +77,105 @@ class DashboardTest {
       processes.stop(id);
       processes.remove(id);
     }
+  }
+
+  ProcessSnapshot awaitStatus(String id, ProcessStatus expected) throws Exception {
+    long deadline = System.nanoTime() + 10_000_000_000L;
+    while (System.nanoTime() < deadline) {
+      var snapshot = processes.status(id);
+      if (snapshot.status() == expected) return snapshot;
+      Thread.sleep(25);
+    }
+    fail("Expected " + expected + " but got " + processes.status(id));
+    return null;
+  }
+
+  void readiness(ProcessConfig c, ReadinessConfig check) {
+    processes.update(
+        c.id(),
+        new ProcessConfig(
+            c.id(),
+            c.name(),
+            c.command(),
+            c.workingDirectory(),
+            c.env(),
+            c.color(),
+            c.mode(),
+            check));
+  }
+
+  @Test
+  void distinguishesNeverStartedAliveStartingReadyAndStopped() throws Exception {
+    var c = fixture("ready-on-input");
+    assertEquals(ProcessStatus.NOT_STARTED, processes.status(c.id()).status());
+    assertFalse(processes.status(c.id()).alive());
+    assertEquals(ProcessStatus.NOT_STARTED, processes.stop(c.id()).status());
+    var start = processes.start(c.id());
+    assertEquals(ProcessStatus.STARTING, start.status());
+    assertTrue(start.alive());
+    Thread.sleep(250);
+    assertEquals(ProcessStatus.STARTING, processes.status(c.id()).status());
+    processes.input(c.id(), "ready\n");
+    assertTrue(awaitStatus(c.id(), ProcessStatus.RUNNING).alive());
+    var stopped = processes.stop(c.id());
+    assertEquals(ProcessStatus.STOPPED, stopped.status());
+    assertFalse(stopped.alive());
+    assertNull(stopped.pid());
+    var restarted = processes.start(c.id());
+    assertNotEquals(start.runId(), restarted.runId());
+    Thread.sleep(300); // Prior READY output must not mark this new run ready.
+    assertEquals(ProcessStatus.STARTING, processes.status(c.id()).status());
+    assertEquals(ProcessStatus.STOPPED, processes.stop(c.id()).status());
+  }
+
+  @Test
+  void httpReadinessWaitsForSuccess() throws Exception {
+    var ready = new java.util.concurrent.atomic.AtomicBoolean();
+    var server =
+        com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/ready",
+        exchange -> {
+          exchange.sendResponseHeaders(ready.get() ? 200 : 503, -1);
+          exchange.close();
+        });
+    server.start();
+    try {
+      var c = fixture("child");
+      readiness(
+          c,
+          new ReadinessConfig(
+              "http", "http://127.0.0.1:" + server.getAddress().getPort() + "/ready", 10000));
+      processes.start(c.id());
+      Thread.sleep(300);
+      assertEquals(ProcessStatus.STARTING, processes.status(c.id()).status());
+      assertTrue(processes.status(c.id()).alive());
+      ready.set(true);
+      assertTrue(awaitStatus(c.id(), ProcessStatus.RUNNING).alive());
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void readinessTimeoutTerminatesTheUnreadyProcess() throws Exception {
+    var c = fixture("child");
+    readiness(c, new ReadinessConfig("log", "NEVER_READY", 1000));
+    long pid = processes.start(c.id()).pid();
+    var failed = awaitStatus(c.id(), ProcessStatus.FAILED);
+    assertFalse(failed.alive());
+    assertTrue(failed.error().contains("timed out"));
+    assertFalse(ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false));
+  }
+
+  @Test
+  void successfulNaturalExitIsExited() throws Exception {
+    var c = fixture("exit-zero");
+    processes.start(c.id());
+    var exited = awaitStatus(c.id(), ProcessStatus.EXITED);
+    assertEquals(0, exited.exitCode());
+    assertFalse(exited.alive());
+    assertNull(exited.error());
   }
 
   ProcessConfig fixture(String kind) throws Exception {
@@ -247,8 +363,8 @@ class DashboardTest {
         .post("/mcp")
         .then()
         .statusCode(200)
-        .body(org.hamcrest.Matchers.containsString("running"));
-    assertEquals(ProcessStatus.RUNNING, processes.status(c.id()).status());
+        .body(org.hamcrest.Matchers.containsString("starting"));
+    assertTrue(processes.status(c.id()).alive());
     request
         .body(
             Map.of(

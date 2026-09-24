@@ -3,10 +3,11 @@ package com.example.dash.process;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum ProcessStatus {
-  STOPPED,
+  NOT_STARTED,
   STARTING,
   RUNNING,
   STOPPING,
+  STOPPED,
   EXITED,
   FAILED;
 

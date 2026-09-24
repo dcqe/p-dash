@@ -65,10 +65,16 @@ public class ProcessManager {
       p.error = null;
       changed(p);
       try {
+        long outputCursor = logs.cursor();
         var session = terminals.start(p.config, p.runId);
         p.terminal = session;
-        p.status = ProcessStatus.RUNNING;
+        if (p.config.readiness().mode().equals("process")) p.status = ProcessStatus.RUNNING;
         changed(p);
+        if (p.status == ProcessStatus.STARTING)
+          p.readinessWatcher =
+              Thread.ofVirtual()
+                  .name("readiness-" + id)
+                  .start(() -> monitorReadiness(p, session, outputCursor));
         Thread.ofVirtual()
             .name("exit-" + id)
             .start(
@@ -77,10 +83,12 @@ public class ProcessManager {
                     int code = session.awaitExit();
                     synchronized (p) {
                       if (p.terminal != session) return;
+                      cancelReadiness(p);
                       p.exitCode = code;
                       p.endedAt = Instant.now().toString();
                       p.terminal = null;
                       p.status = code == 0 ? ProcessStatus.EXITED : ProcessStatus.FAILED;
+                      p.error = code == 0 ? null : "Process exited unexpectedly (exit code " + code + ")";
                       changed(p);
                     }
                   } catch (Exception e) {
@@ -109,6 +117,7 @@ public class ProcessManager {
     var p = registry.get(id);
     synchronized (p) {
       if (p.terminal == null) return p.snapshot();
+      cancelReadiness(p);
       p.status = ProcessStatus.STOPPING;
       changed(p);
       try {
@@ -165,8 +174,98 @@ public class ProcessManager {
 
   private ProcessSnapshot changed(ManagedProcess p) {
     var view = p.snapshot();
+    registry.recordLifecycle(view);
     logs.append("state", p.config.id(), p.runId, null, null, view, null);
     return view;
+  }
+
+  private void cancelReadiness(ManagedProcess p) {
+    if (p.readinessWatcher != null && p.readinessWatcher != Thread.currentThread())
+      p.readinessWatcher.interrupt();
+    p.readinessWatcher = null;
+  }
+
+  private final java.net.http.HttpClient healthClient =
+      java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(2)).build();
+
+  private void monitorReadiness(ManagedProcess p, TerminalSession session, long cursor) {
+    var check = p.config.readiness();
+    var pattern =
+        check.mode().equals("log") ? com.google.re2j.Pattern.compile(check.value()) : null;
+    var text = new StringBuilder();
+    long deadline = System.nanoTime() + check.timeoutMs() * 1_000_000L;
+    try {
+      while (!Thread.currentThread().isInterrupted()) {
+        synchronized (p) {
+          if (p.terminal != session || p.status != ProcessStatus.STARTING || !session.alive())
+            return;
+        }
+        boolean ready = false;
+        if (pattern != null) {
+          var page = logs.getLogs(Set.of(p.config.id()), cursor, 12000, false);
+          cursor = page.cursor();
+          for (var entry : page.events()) {
+            if (entry.data() == null || !Objects.equals(entry.runId(), p.runId)) continue;
+            text.append(entry.data());
+            if (text.length() > 65536) text.delete(0, text.length() - 65536);
+            if (pattern.matcher(LogService.plain(text.toString())).find()) {
+              ready = true;
+              break;
+            }
+          }
+        } else {
+          try {
+            var request =
+                java.net.http.HttpRequest.newBuilder(java.net.URI.create(check.value()))
+                    .timeout(java.time.Duration.ofSeconds(2))
+                    .GET()
+                    .build();
+            int code =
+                healthClient
+                    .send(request, java.net.http.HttpResponse.BodyHandlers.discarding())
+                    .statusCode();
+            ready = code >= 200 && code < 300;
+          } catch (java.io.IOException ignored) {
+            /* Refused connections are normal during startup. */
+          }
+        }
+        synchronized (p) {
+          if (p.terminal != session || p.status != ProcessStatus.STARTING || !session.alive())
+            return;
+          if (ready) {
+            p.status = ProcessStatus.RUNNING;
+            p.readinessWatcher = null;
+            changed(p);
+            return;
+          }
+          if (System.nanoTime() >= deadline) {
+            // Publish STOPPING while terminating a startup that never became ready.
+            p.status = ProcessStatus.STOPPING;
+            changed(p);
+            terminals.stop(session);
+            p.exitCode = session.awaitExit();
+            p.terminal = null;
+            p.status = ProcessStatus.FAILED;
+            p.endedAt = Instant.now().toString();
+            p.error = "Readiness check timed out after " + check.timeoutMs() + " ms";
+            p.readinessWatcher = null;
+            changed(p);
+            return;
+          }
+        }
+        Thread.sleep(200);
+      }
+    } catch (InterruptedException ignored) {
+      Thread.currentThread().interrupt();
+    } catch (Exception e) {
+      synchronized (p) {
+        if (p.terminal == session && p.status != ProcessStatus.STOPPED) {
+          p.status = ProcessStatus.FAILED;
+          p.error = "Readiness check failed: " + e.getMessage();
+          changed(p);
+        }
+      }
+    }
   }
 
   public void shutdown() {

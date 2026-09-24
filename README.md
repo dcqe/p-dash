@@ -42,11 +42,15 @@ Set the working directory to the repository root. Create another command for eac
 
 PTY mode provides an interactive terminal through pty4j (ConPTY on Windows). Pipe mode preserves separate stdout and stderr streams. The combined terminal labels and merges multiple sources, preserving ANSI colors while removing unrelated cursor controls. It is read-only; select a process tab to type into that process. Existing timestamps are preserved rather than duplicated. Display pause does not pause the process.
 
-The application chrome uses neutral grey colors; ANSI colors printed by commands remain visible. Running means the process is alive, not ready or healthy. No CPU/memory metrics are inferred from log output.
+The application chrome uses neutral grey colors; ANSI colors printed by commands remain visible. Each terminal tab has a green dot when its OS process is alive and a hollow grey dot otherwise. Command identity colors remain on cards and merged source labels.
+
+Commands begin as `NOT_STARTED`. Starting a command moves it to `STARTING`; it becomes `RUNNING` only after its configured startup readiness check passes. Intentional termination goes through `STOPPING` to `STOPPED`. Startup failure or readiness timeout produces `FAILED`; a process that exits on its own with code 0 is `EXITED`, while a nonzero unexpected exit is `FAILED`. Lifecycle history survives dashboard restarts; interrupted runs are marked failed, never automatically reattached to old PIDs.
+
+In the command editor, **Ready when** offers a log regex, an HTTP(S) URL returning 2xx, or an explicit **Process starts** option for commands without an application readiness signal. Auto defaults to Quarkus's `started in … Listening on:` message when the command contains `quarkus`, otherwise the word `READY`. The default startup timeout is 120 seconds and can be set up to 30 minutes. Timeout terminates the unready process. This is a startup check, not continuous health monitoring; an HTTP URL must belong to the intended command. No CPU/memory metrics are inferred from logs.
 
 ## Java demos
 
-The first startup seeds three stopped commands and a Java demos group:
+The first startup seeds three not-started commands and a Java demos group:
 
 - Healthy: READY and regular heartbeat output.
 - Flaky: periodic warnings and stderr errors.
@@ -56,7 +60,7 @@ These are standalone Java child processes managed exactly like user commands. Th
 
 ## Agent connection
 
-The embedded MCP server uses Streamable HTTP at `http://127.0.0.1:4310/mcp`. Configure an HTTP-capable MCP client with that URL and `Authorization: Bearer <token>`, where the token is read from `.pdash/token`. The Agent connection screen shows a configuration template. Client configuration formats vary.
+See [Agent and AI setup](docs/agent-setup.md) for MCP, REST, and CLI configuration.
 
 Tools cover definitions/groups, lifecycle, input/resize, incremental output, regex search, readiness, and process exit. `wait_for_ready` matches a supplied log regex; it is not an HTTP health probe. Wait calls are bounded to 30 seconds; resume from the returned cursor. See [API contract](docs/api.md).
 

@@ -14,7 +14,7 @@ public class StartProcessTool {
 
   @Tool(
       name = "start_process",
-      description = "Start an existing process by ID. Running means alive, not ready.",
+      description = "Start an existing process by ID. STARTING waits for configured readiness; alive is OS liveness.",
       structuredContent = true)
   @RunOnVirtualThread
   public ProcessSnapshot execute(@ToolArg(description = "Saved process ID") String processId)

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ChevronRight, X } from 'lucide-react';
 import { palette } from '../ui.js';
-export default function CommandDialog({ command, cwd, onClose, onSave }) {
+export default function CommandDialog({ command, cwd, onClose, onSave, onDelete }) {
   const [form, setForm] = useState(
     command
       ? {
@@ -14,6 +14,9 @@ export default function CommandDialog({ command, cwd, onClose, onSave }) {
       : { name: '', command: '', cwd, color: '', mode: 'pty' },
   );
   const [env, setEnv] = useState('');
+  const [readiness, setReadiness] = useState(
+    command?.readiness || { mode: 'auto', value: '', timeoutMs: 120000 },
+  );
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const field = (key) => ({
@@ -24,7 +27,12 @@ export default function CommandDialog({ command, cwd, onClose, onSave }) {
     e.preventDefault();
     setBusy(true);
     try {
-      const body = { ...form, command: form.command.split(/\r?\n/), color: form.color || undefined };
+      const body = {
+        ...form,
+        command: form.command.split(/\r?\n/),
+        color: form.color || undefined,
+      };
+      body.readiness = readiness;
       if (env.trim()) body.env = JSON.parse(env);
       await onSave(body);
       onClose();
@@ -74,6 +82,46 @@ export default function CommandDialog({ command, cwd, onClose, onSave }) {
             </select>
           </label>
           <label>
+            Ready when
+            <select
+              value={readiness.mode}
+              onChange={(e) => setReadiness({ ...readiness, mode: e.target.value, value: '' })}
+            >
+              {!command && <option value="auto">Auto (Quarkus startup message or READY)</option>}
+              <option value="log">Output matches a pattern</option>
+              <option value="http">Health URL responds successfully</option>
+              <option value="process">Process starts (no application readiness check)</option>
+            </select>
+          </label>
+          {['log', 'http'].includes(readiness.mode) && (
+            <label>
+              {readiness.mode === 'http' ? 'Health URL' : 'Ready log pattern (regex)'}
+              <input
+                required
+                value={readiness.value}
+                placeholder={
+                  readiness.mode === 'http' ? 'http://127.0.0.1:8080/q/health/ready' : '\\bREADY\\b'
+                }
+                onChange={(e) => setReadiness({ ...readiness, value: e.target.value })}
+              />
+            </label>
+          )}
+          {readiness.mode !== 'process' && (
+            <label>
+              Startup timeout (seconds)
+              <input
+                type="number"
+                min="1"
+                max="1800"
+                required
+                value={readiness.timeoutMs / 1000}
+                onChange={(e) =>
+                  setReadiness({ ...readiness, timeoutMs: Number(e.target.value) * 1000 })
+                }
+              />
+            </label>
+          )}
+          <label>
             Working directory
             <input required placeholder="Absolute path to your project" {...field('cwd')} />
           </label>
@@ -105,6 +153,11 @@ export default function CommandDialog({ command, cwd, onClose, onSave }) {
           </div>
           {error && <p className="error">{error}</p>}
           <div className="dialog-actions">
+            {command && (
+              <button type="button" className="danger" disabled={busy} onClick={onDelete}>
+                Delete command
+              </button>
+            )}
             <button type="button" onClick={onClose}>
               Cancel
             </button>

@@ -1,11 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Activity,
-  ArrowUpRight,
-  Check,
   ChevronRight,
-  Code2,
-  Copy,
   Download,
   Folder,
   Layers,
@@ -18,16 +13,14 @@ import {
   Search,
   Square,
   TerminalSquare,
-  Trash2,
   X,
 } from 'lucide-react';
 import { api } from './api/client.js';
 import { useDashboard } from './api/useDashboard.js';
-import { palette, active, ago, plain } from './ui.js';
+import { palette, active, ago, plain, statusLabel } from './ui.js';
 import TerminalPane from './terminal/TerminalPane.jsx';
 import CommandDialog from './process/CommandDialog.jsx';
 import GroupDialog from './process/GroupDialog.jsx';
-import AgentConnection from './agent/AgentConnection.jsx';
 export default function App() {
   const [selected, setSelected] = useState('all');
   const [tab, setTab] = useState('combined');
@@ -37,16 +30,10 @@ export default function App() {
   const [dialog, setDialog] = useState(null);
   const [toast, setToast] = useState(null);
   const [busy, setBusy] = useState(new Set());
-  const [agent, setAgent] = useState(false);
-  const [tick, setTick] = useState(0);
 
   const scrollArea = useRef();
   const { commands, groups, events, connection, cwd } = useDashboard(setToast);
   const fail = (e) => setToast(e.message || String(e));
-  useEffect(() => {
-    const t = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(t);
-  }, []);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 6000);
@@ -54,7 +41,6 @@ export default function App() {
   }, [toast]);
   const group = groups.find((g) => g.id === selected);
   const visible = group ? commands.filter((c) => group.processIds.includes(c.id)) : commands;
-  const running = commands.filter(active).length;
   useEffect(() => {
     if (tab !== 'combined' && !visible.some((c) => c.id === tab)) setTab('combined');
   }, [selected, commands]);
@@ -120,7 +106,6 @@ export default function App() {
           className={`nav-item ${selected === 'all' ? 'selected' : ''}`}
           onClick={() => {
             setSelected('all');
-            setAgent(false);
           }}
         >
           <Layers size={17} />
@@ -143,7 +128,6 @@ export default function App() {
             onClick={() => {
               setSelected(g.id);
               setTab('combined');
-              setAgent(false);
             }}
           >
             <Folder size={16} style={{ color: palette[i % palette.length] }} />
@@ -162,26 +146,7 @@ export default function App() {
           <Plus size={14} />
           New group
         </button>
-        <button className="mobile-agent text-button" onClick={() => setAgent(true)}>
-          <Code2 size={14} />
-          Agent access
-        </button>
         <div className="sidebar-bottom">
-          <div className="agent-card">
-            <span className="agent-icon">
-              <Code2 size={19} />
-            </span>
-            <strong>Built for your AI, too.</strong>
-            <p>
-              The same controls.
-              <br />
-              One local API.
-            </p>
-            <button onClick={() => setAgent(true)}>
-              Connect an agent
-              <ArrowUpRight size={14} />
-            </button>
-          </div>
           <div className="local-status">
             <span className={`dot ${connection === 'live' ? 'running' : ''}`} />
             <span>
@@ -202,26 +167,14 @@ export default function App() {
           <div>
             <span>Workspace</span>
             <ChevronRight size={13} />
-            <strong>{agent ? 'Agent connection' : group?.name || 'All commands'}</strong>
+            <strong>{group?.name || 'All commands'}</strong>
           </div>
           <span className="host-label">
             <Radio size={13} />
             127.0.0.1<span className="key-label">LOCAL ONLY</span>
           </span>
         </header>
-        {agent ? (
-          <AgentConnection onMessage={setToast} />
-        ) : (
-          <>
             <section className="page-heading">
-              <div>
-                <div className="eyebrow">
-                  <span className="tiny-line" />
-                  YOUR LOCAL CONTROL ROOM
-                </div>
-                <h1>{group?.name || 'All systems. One view.'}</h1>
-                <p>Less terminal juggling. More building.</p>
-              </div>
               <div className="heading-actions">
                 {group && (
                   <button
@@ -232,44 +185,6 @@ export default function App() {
                     <Pencil size={17} />
                   </button>
                 )}
-                <button className="primary" onClick={() => setDialog({ type: 'command' })}>
-                  <Plus size={17} />
-                  New command
-                </button>
-              </div>
-            </section>
-            <section className="metrics">
-              <div>
-                <span className="metric-icon green">
-                  <Activity size={18} />
-                </span>
-                <div>
-                  <strong>{running.toString().padStart(2, '0')}</strong>
-                  <span>Running</span>
-                </div>
-                <span className="metric-caption">
-                  {running ? 'Processes alive' : 'Ready when you are'}
-                </span>
-              </div>
-              <div>
-                <span className="metric-icon">
-                  <Square size={16} />
-                </span>
-                <div>
-                  <strong>{(commands.length - running).toString().padStart(2, '0')}</strong>
-                  <span>Inactive</span>
-                </div>
-                <span className="metric-caption">Stopped or exited</span>
-              </div>
-              <div>
-                <span className="metric-icon purple">
-                  <Layers size={18} />
-                </span>
-                <div>
-                  <strong>{groups.length.toString().padStart(2, '0')}</strong>
-                  <span>Groups</span>
-                </div>
-                <span className="metric-caption">Organized your way</span>
               </div>
             </section>
             <section className="process-section">
@@ -286,6 +201,18 @@ export default function App() {
                   >
                     <Play size={13} />
                     Start all
+                  </button>
+                  <button
+                    className="text-button"
+                    disabled={
+                      !visible.length ||
+                      connection !== 'live' ||
+                      visible.some((c) => busy.has(c.id))
+                    }
+                    onClick={() => batch('restart')}
+                  >
+                    <RotateCcw size={13} />
+                    Restart all
                   </button>
                   <span className="divider" />
                   <button
@@ -314,7 +241,7 @@ export default function App() {
                       </button>
                       <span className={`status ${c.status}`}>
                         <span className={`dot ${c.status}`} />
-                        {c.status}
+                        {statusLabel(c.status)}
                       </span>
                     </div>
                     <code title={c.command.join(' ')}>{c.command.join(' ')}</code>
@@ -362,14 +289,6 @@ export default function App() {
                         >
                           {active(c) ? <Square size={13} /> : <Play size={14} />}
                         </button>
-                        <button
-                          className="icon delete-action"
-                          disabled={active(c)}
-                          aria-label={`Delete ${c.name}`}
-                          onClick={() => setDialog({ type: 'delete', command: c })}
-                        >
-                          <Trash2 size={12} />
-                        </button>
                       </div>
                     </div>
                   </article>
@@ -401,7 +320,16 @@ export default function App() {
                       className={tab === c.id ? 'active' : ''}
                       onClick={() => setTab(c.id)}
                     >
-                      <span className="dot" style={{ background: c.color }} />
+                      <span
+                        className={`dot process-aliveness ${c.alive ? 'alive' : 'not-alive'}`}
+                        role="img"
+                        aria-label={`${c.name}: ${c.alive ? 'process alive' : 'no live process'}`}
+                        title={
+                          c.alive
+                            ? 'Process alive (readiness is shown on the command card)'
+                            : 'No live process'
+                        }
+                      />
                       {c.name}
                     </button>
                   ))}
@@ -490,8 +418,6 @@ export default function App() {
                 Everything stays on your machine
               </span>
             </footer>
-          </>
-        )}
       </main>
       {toast && (
         <div className="toast" role="status">
@@ -506,6 +432,7 @@ export default function App() {
           command={dialog.command}
           cwd={cwd}
           onClose={() => setDialog(null)}
+          onDelete={() => setDialog({ type: 'delete', command: dialog.command })}
           onSave={(body) =>
             api(
               dialog.command ? `/commands/${dialog.command.id}` : '/commands',
@@ -539,7 +466,9 @@ export default function App() {
             <h2>Delete {dialog.command.name}?</h2>
             <p className="muted">This removes its saved definition and group memberships.</p>
             <div className="dialog-actions">
-              <button onClick={() => setDialog(null)}>Cancel</button>
+              <button onClick={() => setDialog({ type: 'command', command: dialog.command })}>
+                Cancel
+              </button>
               <button className="danger" onClick={() => remove(dialog.command)}>
                 Delete command
               </button>

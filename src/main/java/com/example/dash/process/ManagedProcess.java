@@ -6,10 +6,11 @@ import java.util.ArrayList;
 /** Each instance is its own lifecycle lock, so unrelated starts/stops can run concurrently. */
 public final class ManagedProcess {
   public volatile ProcessConfig config;
-  public volatile ProcessStatus status = ProcessStatus.STOPPED;
+  public volatile ProcessStatus status = ProcessStatus.NOT_STARTED;
   public volatile TerminalSession terminal;
   public String runId, startedAt, endedAt, error;
   public Integer exitCode;
+  public Thread readinessWatcher;
 
   public ManagedProcess(ProcessConfig config) {
     this.config = config;
@@ -30,6 +31,8 @@ public final class ManagedProcess {
         startedAt,
         endedAt,
         exitCode,
-        error);
+        error,
+        terminal != null && terminal.alive(),
+        config.readiness());
   }
 }

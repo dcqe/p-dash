@@ -17,4 +17,6 @@ public record ProcessSnapshot(
     String startedAt,
     String endedAt,
     Integer exitCode,
-    String error) {}
+    String error,
+    boolean alive,
+    ReadinessConfig readiness) {}

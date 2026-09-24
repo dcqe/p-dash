@@ -82,7 +82,7 @@ export default function TerminalPane({ events, commands, processId, query, pause
     rendered.current = 0;
     initialized.current = false;
     combined.current = new CombinedLines();
-  }, [query, commands.map((c) => c.id).join(',')]);
+  }, [query, commands.map((c) => `${c.id}:${c.name}:${c.color}`).join(',')]);
   useEffect(() => {
     const term = terminal.current;
     if (!term || paused) return;

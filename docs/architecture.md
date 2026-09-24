@@ -54,7 +54,9 @@ Persisted snapshots are atomic file replacements. Definitions and groups are sav
 
 Merged output uses independent line/escape parsers per process/run, strips cursor movement and OSC operations, and retains SGR color. Individual tabs retain native terminal behavior and target input explicitly. Resizing from the latest viewer affects the shared PTY dimensions.
 
-Regex waits aggregate up to 64 KiB of recent text per run and strip ANSI before matching. They return matched/timedOut/exited/truncated and a cursor. Readiness has an explicit log pattern; it is never inferred from a RUNNING state. RE2/J intentionally does not support backreferences or lookaround.
+Regex waits aggregate up to 64 KiB of recent text per run and strip ANSI before matching. They return matched/timedOut/exited/truncated and a cursor. RE2/J intentionally does not support backreferences or lookaround.
+
+ProcessManager tracks readiness independently from OS aliveness. Each run has a cancellable readiness watcher, guarded by the terminal session identity so an old run cannot mark a restart ready. Log checks read only the current run's output, including output emitted before the watcher subscribes. HTTP checks poll a configured URL with bounded requests and no redirects. A readiness timeout terminates the child and records FAILED. The explicit process-only check uses successful spawn as readiness. Snapshots expose `alive` directly from the OS handle, independent of status, and include the configured check. Tab dots use `alive`; cards show lifecycle status. Latest lifecycle snapshots are saved separately from definitions and restored without reviving process handles. On upgrade, retained state events recover known prior runs where possible.
 
 ## Local access
 

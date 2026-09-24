@@ -11,7 +11,19 @@ public record ProcessConfig(
     String workingDirectory,
     Map<String, String> env,
     String color,
-    String mode) {
+    String mode,
+    ReadinessConfig readiness) {
+  public ProcessConfig(
+      String id,
+      String name,
+      List<String> command,
+      String workingDirectory,
+      Map<String, String> env,
+      String color,
+      String mode) {
+    this(id, name, command, workingDirectory, env, color, mode, null);
+  }
+
   public ProcessConfig {
     id = id == null || id.isBlank() ? UUID.randomUUID().toString() : id;
     if (!id.matches("[a-zA-Z0-9_-]{1,80}"))
@@ -28,6 +40,11 @@ public record ProcessConfig(
       throw new IllegalArgumentException(
           "command must contain an executable and optional arguments");
     command = List.copyOf(command);
+    readiness = readiness == null ? ReadinessConfig.defaults(command) : readiness;
+    if (readiness.mode().equals("auto")) {
+      var defaults = ReadinessConfig.defaults(command);
+      readiness = new ReadinessConfig(defaults.mode(), defaults.value(), readiness.timeoutMs());
+    }
     if (command.getFirst().isBlank()) throw new IllegalArgumentException("Executable is required");
     if (workingDirectory == null
         || !Path.of(workingDirectory).isAbsolute()
@@ -48,7 +65,10 @@ public record ProcessConfig(
 
   /** Stable, vivid assignment so a command keeps the same identity color across restarts. */
   static String generatedColor(String id) {
-    String[] colors = {"#5B8FF9", "#61DDAA", "#65789B", "#F6BD16", "#7262FD", "#78D3F8", "#9661BC", "#F6903D", "#008685", "#F08BB4"};
+    String[] colors = {
+      "#5B8FF9", "#61DDAA", "#65789B", "#F6BD16", "#7262FD", "#78D3F8", "#9661BC", "#F6903D",
+      "#008685", "#F08BB4"
+    };
     return colors[Math.floorMod(id.hashCode(), colors.length)];
   }
 }

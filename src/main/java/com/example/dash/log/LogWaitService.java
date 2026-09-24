@@ -50,7 +50,8 @@ public class LogWaitService {
         }
       var status = processes.status(id);
       boolean exited =
-          status.status() == ProcessStatus.EXITED
+          status.status() == ProcessStatus.NOT_STARTED
+              || status.status() == ProcessStatus.EXITED
               || status.status() == ProcessStatus.FAILED
               || status.status() == ProcessStatus.STOPPED;
       if (exited) return new Result(false, false, true, truncated, cursor, null, status);
@@ -71,6 +72,7 @@ public class LogWaitService {
     while (true) {
       var s = processes.status(id);
       if (s.status() == ProcessStatus.STOPPED
+          || s.status() == ProcessStatus.NOT_STARTED
           || s.status() == ProcessStatus.EXITED
           || s.status() == ProcessStatus.FAILED)
         return new Result(true, false, true, false, logs.cursor(), null, s);

@@ -65,7 +65,8 @@ public class ProcessResource {
       String workingDirectory,
       Map<String, String> env,
       String color,
-      String mode) {
+      String mode,
+      ReadinessConfig readiness) {
     ProcessConfig config(String id, ProcessConfig previous) {
       return new ProcessConfig(
           id,
@@ -76,7 +77,8 @@ public class ProcessResource {
               : cwd != null ? cwd : previous.workingDirectory(),
           env != null ? env : previous == null ? null : previous.env(),
           color != null ? color : previous == null ? null : previous.color(),
-          mode != null ? mode : previous == null ? null : previous.mode());
+          mode != null ? mode : previous == null ? null : previous.mode(),
+          readiness != null ? readiness : previous == null ? null : previous.readiness());
     }
   }
 

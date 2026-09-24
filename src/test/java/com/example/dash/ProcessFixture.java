@@ -3,6 +3,17 @@ package com.example.dash;
 /** Standalone child JVM used by lifecycle tests; deliberately has no framework dependencies. */
 public final class ProcessFixture {
   public static void main(String[] args) throws Exception {
+    if (args[0].equals("ready-on-input")) {
+      new java.util.Scanner(System.in).nextLine();
+      System.out.print("\u001b[32mREA");
+      System.out.flush();
+      Thread.sleep(100);
+      System.out.println("DY\u001b[0m");
+    }
+    if (args[0].equals("exit-zero")) {
+      System.out.println("DONE");
+      return;
+    }
     if (args[0].equals("exit")) {
       System.err.println("FIXTURE_STDERR");
       System.out.println("FIXTURE_DONE");
