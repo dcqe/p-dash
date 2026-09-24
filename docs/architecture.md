@@ -1,25 +1,65 @@
 # Architecture
 
-## Ownership and boundaries
+## Decision
 
-One Node.js daemon owns all child processes. React is a disposable client: navigation and disconnects never kill a command. Fastify exposes the same validated HTTP API to the UI, CLI and MCP stdio adapter. No database server, cloud account or background desktop runtime is needed.
+Use Java 21 / Quarkus 3.33.3 as the single application and process owner. Quarkiverse MCP Server 1.13.2 embeds Streamable HTTP tools into the same CDI service graph. React/Vite is a build-time frontend; xterm.js renders terminal streams. pty4j 0.13.13 provides native PTYs, with ConPTY on Windows. Jackson handles JSON/YAML; RE2/J provides bounded-complexity regex matching for agent waits/searches.
 
-Commands use node-pty (ConPTY on Windows, PTYs on Unix), not stdout pipes. Each PTY is isolated in a small Node child host, connected to the daemon by IPC. This contains native faults and bounds terminal handle lifetime; the host exits after delivering its final output and exit code. It preserves ANSI color, interactive Quarkus prompts and resize semantics. A process has an immutable ID, editable definition, distinct run ID, and explicit stopped/starting/running/stopping/exited/failed state. Concurrent starts share one initialization promise; restart waits for stop. Environment values stay local and are never included in list responses.
+```text
+React / xterm ── REST + WebSocket ─┐
+                                ├─ ProcessManager / GroupService
+AI agent ── embedded MCP tools ──┘         │
+                                         ├─ TerminalService → real OS child processes
+                                         └─ LogService → buffer + snapshots + subscribers
+```
 
-The browser uses xterm.js for an individual process. A combined terminal is an observation surface: timestamped records, source labels and ANSI SGR colors, with cursor-control sequences removed. A streaming sanitizer maintains separate escape-sequence and incomplete-line state per process/run; it buffers unfinished lines until newline or an 8 KiB bound. Arbitrary terminal cursor operations from separate programs cannot meaningfully share one screen. Input always targets one selected process. Groups are persisted lists of process IDs and support batch start/stop/restart with per-member results.
+There is no Node backend, CLI process owner, MCP stdio adapter, or HTTP hop between MCP tools and application services.
 
-## Transport and retention
+## Source layout
 
-REST handles control; an authenticated fetch-based SSE stream delivers sequenced events. A global monotonically increasing cursor supports replay, filtered log reads and reconnect. Subscribers are dropped on excessive backpressure. Retention is bounded by event count and byte size; a debounced atomic snapshot preserves recent output and definitions. A returned `truncated` flag exposes when a reader's cursor has fallen outside retention. This is a development observability tool, not a durable log archive: a crash can lose the most recent snapshot interval.
+```text
+src/main/java/com/example/dash/
+  DashApplication.java       lifecycle, browser launch, runner ownership
+  config/                    private local state I/O
+  process/                   config, registry, lifecycle, groups, migration
+  log/                       bounded history, replay, subscriptions, regex waits
+  terminal/                  native terminal sessions and authenticated WebSocket
+  security/                  local bearer tokens and one-use connection tickets
+  api/                       REST resources, validation/error responses
+  mcp/tool/                  thin service-calling tools
+  mcp/dto/                   structured tool requests/results
+  demo/processes/            independent Healthy, Flaky and Chatty Java programs
+src/main/resources/processes/  seed YAML definitions
+src/test/java/                 actual lifecycle and transport integration tests
+frontend/src/
+  api/                       HTTP client and reconnecting stream hook
+  process/                   command/group editors
+  terminal/                  xterm rendering and per-source merged line assembly
+  agent/                     connection instructions
+  App.jsx                    workspace layout and controls
+```
 
-## Lifecycle and safety
+## Process ownership
 
-Bind to 127.0.0.1. Validate Host and Origin, and require a per-install bearer token for all API endpoints except the same-origin browser session bootstrap. The bootstrap refuses cross-site fetches and non-browser requests. Tokens and environment overrides live in ignored local state. All launched commands have the user's OS permissions; this is deliberately not a sandbox or public hosting service.
+Definitions hold an explicit argument vector, directory, env overrides, and PTY/pipe mode. ProcessManager serializes each process's start/stop/restart operations. Native terminal sessions hold the child handle; the browser and MCP tools never spawn alternate processes. Environment values stay out of list/status responses. Commands are never automatically restarted or started on boot.
 
-Stop sends Ctrl-C, waits, then terminates the process tree (taskkill /T /F on Windows, process-group SIGKILL on Unix). Daemon shutdown stops owned commands. Processes do not auto-restart after a daemon crash; retained logs survive. Intentional detached children may escape OS process ownership and are outside the supervisor contract. No automatic retries, shell command guessing, dependency ordering or readiness inference: running means alive, not healthy.
+Stop requests send Ctrl+C, wait three seconds, then terminate the process tree if needed. Captured descendants are also terminated if the parent exits during the grace period. An exit watcher drains remaining output before publishing final state. Stop/edit/delete guards prevent changing an active definition. Shutdown stops managed processes concurrently and flushes output.
 
-## Technology choices
+`run.cmd` invokes its PowerShell helper, which directly invokes Java in the same console. Java watches the helper PID to cover abrupt runner termination. This is local development supervision, not a hardened OS service: killing Java forcibly or an OS crash can bypass graceful cleanup. Windows detached children that deliberately escape ancestry are outside this guarantee.
 
-Node.js 22+ gives a small cross-platform runtime with a mature PTY library. Fastify and Zod keep API validation shared and explicit. React/Vite provide a small component-based interface; xterm.js supplies terminal emulation. SSE avoids unnecessary bidirectional transport: keyboard input and resize use ordered HTTP requests. MCP uses the official TypeScript SDK, forwarding to the same API instead of introducing a second process manager.
+## Output and consistency
 
-References: https://github.com/microsoft/node-pty · https://xtermjs.org/docs/ · https://fastify.dev/docs/latest/ · https://modelcontextprotocol.io/docs/develop/build-server
+Reader virtual threads decode UTF-8 incrementally from each stream. A monotonic event sequence covers output, lifecycle, and group changes. LogService owns a bounded buffer and publishes to live subscribers. Snapshot + subscription is atomic with respect to log append, avoiding a replay/live gap. WebSocket snapshot state includes its capture cursor; the frontend applies newer state events after the snapshot. Slow consumers are disconnected when their send queue exceeds 4 MiB and reconnect with a cursor.
+
+Persisted snapshots are atomic file replacements. Definitions and groups are saved on change; logs are flushed every second and at orderly shutdown. Retention is intentionally bounded; this is a development dashboard, not a durable unlimited log archive. A single server must own a state directory.
+
+Merged output uses independent line/escape parsers per process/run, strips cursor movement and OSC operations, and retains SGR color. Individual tabs retain native terminal behavior and target input explicitly. Resizing from the latest viewer affects the shared PTY dimensions.
+
+Regex waits aggregate up to 64 KiB of recent text per run and strip ANSI before matching. They return matched/timedOut/exited/truncated and a cursor. Readiness has an explicit log pattern; it is never inferred from a RUNNING state. RE2/J intentionally does not support backreferences or lookaround.
+
+## Local access
+
+Bind loopback only. Validate Host and Origin. REST and MCP use the same bearer token. The same-origin UI bootstraps its token via `/api/session`; WebSocket connections use short-lived one-use tickets instead of putting the permanent token in a URL. API responses are not cached. Terminal/log content is data, never agent instructions. This design assumes a trusted local user account, not hostile tenants.
+
+## Tradeoffs
+
+MCP uses HTTP so it shares the running Java application; agents need an HTTP-capable client and the application must remain running. Native PTYs bring a native dependency but preserve Quarkus interactive shortcuts and colored output. Pipe mode is simpler when interactivity is unnecessary. Files suit a single local workspace; multi-user access, distributed workers, indefinite log storage and dependency orchestration would require separate designs.

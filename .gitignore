@@ -6,3 +6,7 @@ playwright-report/
 *.log
 .env
 .npm-cache/
+target/
+.tools/
+frontend/dist/
+frontend/node_modules/

@@ -1,0 +1,10 @@
+id: demo-flaky
+name: Flaky demo
+workingDirectory: .
+mode: pipe
+command:
+  - "${java}"
+  - -cp
+  - "${demo.classpath}"
+  - com.example.dash.demo.DemoProcessRunner
+  - FLAKY

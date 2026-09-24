@@ -1,0 +1,10 @@
+id: demo-chatty
+name: Chatty demo
+workingDirectory: .
+mode: pty
+command:
+  - "${java}"
+  - -cp
+  - "${demo.classpath}"
+  - com.example.dash.demo.DemoProcessRunner
+  - CHATTY

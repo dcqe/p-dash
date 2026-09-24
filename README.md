@@ -1,97 +1,83 @@
 # p-dash
 
-A local control room for the commands that keep running. Start, stop, restart and observe dev servers, Quarkus modules, background workers and other long-lived commands from one web interface.
+A local dashboard for long-running commands. One Quarkus application owns processes, persists bounded logs, streams terminals to a grey React UI, and exposes the same services as MCP tools.
 
 ## Run
 
-**Windows: double-click `run.cmd`** in this folder. It starts p-dash, opens your default browser, and keeps the server attached to that window. Closing the window stops p-dash. If an older p-dash instance is already using the port, the runner replaces it automatically. Node.js 22+ must be installed.
+On this machine, run `./run.cmd` from this folder. The verified portable JDK and Maven are in ignored `.tools/`. The packaged app is ready to run.
 
-From PowerShell, run `./run.cmd`. Use `./run.cmd -NoBrowser` to skip opening a browser. The runner respects `PDASH_PORT` and `PDASH_DATA`.
-
-Requires Node.js 22+ and npm. Windows 10 1809+/Windows 11, Linux and macOS are supported by the terminal backend. Integration tests have been run on Windows; Unix process-group behavior still needs testing on those platforms.
-
-```sh
-npm install
-npm run build
-npm start
+```powershell
+.\run.cmd                 # run in this console and open the browser
+.\run.cmd -NoBrowser      # same application, without opening a browser
+.\run.cmd -Rebuild        # rebuild the UI and Java app, including tests
 ```
 
-Open **http://127.0.0.1:4310**. On this machine, if npm is not on PATH, invoke `C:\Program Files\nodejs\npm.cmd` directly, or run `node server/index.js` after the existing build.
+Keep that console open. Ctrl+C stops p-dash and its managed commands. A Java owner watcher also shuts down if the runner disappears. Closing the browser does not stop processes. There is no detached Node server or second console. The PowerShell file in `scripts/` is an implementation helper; `run.cmd` is the single launcher.
 
-For development: `npm run dev` starts the API on 4310 and Vite on 5173. For an optional example workspace, run `npm run demo` while the server is running, then start the clearly labelled demo commands in the UI. Demo output is simulated; these are not real application health checks.
+The launcher rebuilds when application sources or build inputs are newer than the packaged app. `-Rebuild` forces a rebuild even when timestamps have not changed.
 
-## The dashboard
+The default address is http://127.0.0.1:4310. `PDASH_PORT` and `PDASH_DATA` override the port and state directory. Before launch, the runner takes ownership of the configured loopback port: every existing listener and its child process tree is force-stopped, then the new Java instance is started. Keep the port dedicated to p-dash. Agents can request an authenticated `POST /api/shutdown`.
 
-- Save named commands with an absolute working directory, environment overrides and source color.
-- Start, stop or restart individual commands, all commands, or a saved group.
-- Watch colored output in a shared, timestamped terminal. Filter, pause the display or export captured output.
-- Select a command's tab for a real interactive terminal, including Quarkus keyboard shortcuts and terminal resizing.
-- Observe process state, PID, elapsed runtime and exit code. “Running” means the process is alive, not that its HTTP endpoint is healthy. CPU/RAM charts are not part of this version.
-- Refresh or close the browser without interrupting processes. The server owns them.
+On another machine, install JDK 21+, Maven 3.9+, and Node 22+/npm for frontend builds. Set `JAVA_HOME` and put Maven/npm on PATH, then run `run.cmd -Rebuild`. Node is a build tool only. After packaging, the entire `target/quarkus-app` directory can run with:
 
-Combined streams are read-only because unrelated cursor-control sequences cannot safely share an interactive screen. Input always targets one command. Colors are preserved; non-color terminal controls are removed in combined observation output. Individual terminals preserve full terminal semantics. The latest browser tab to resize a shared interactive terminal determines its dimensions.
+```sh
+java -jar target/quarkus-app/quarkus-run.jar
+```
 
-## Quarkus and multi-module repositories
+## Commands and terminals
 
-Create one command per independently running service, with the repository root as its working directory. For example:
+Define a name, executable/arguments, working directory, optional environment overrides, and terminal mode. Every command has a stable vivid identity color; leave color unset and p-dash generates one from the command ID, or choose one in the editor. That same color appears on the command card, group markers, and merged terminal source label. The command editor takes **one argument per line**, including the executable on the first line. Arguments are passed directly; do not add surrounding quotes to paths with spaces. To run shell syntax or Windows batch files, explicitly use a shell.
+
+For a Windows Maven module, enter:
 
 ```text
-Name: orders-service
-Command: mvnw.cmd -pl orders -am quarkus:dev -Dquarkus.http.port=8081
-Working directory: C:\work\my-monorepo
-
-Name: inventory-service
-Command: mvnw.cmd -pl inventory -am quarkus:dev -Dquarkus.http.port=8082
-Working directory: C:\work\my-monorepo
+cmd.exe
+/d
+/s
+/c
+mvnw.cmd -pl orders -am quarkus:dev -Dquarkus.http.port=8081
 ```
 
-On Unix use `./mvnw` instead of `mvnw.cmd`. Adjust module selectors and build prerequisites to your repository. Assign distinct HTTP/debug ports if needed. Put both commands in a “Backend” group to start/stop them together and combine their output. A single Maven reactor command can also be saved as one process; p-dash does not inspect or split Maven modules automatically.
+Set the working directory to the repository root. Create another command for each independently running module, use distinct application/debug ports, and save them in a group. Group controls report each member's outcome; a group does not specify dependencies or readiness ordering.
 
-Commands run through `cmd.exe /d /s /c` on Windows and `/bin/sh -c` on Unix. Quote executable paths containing spaces. To use PowerShell syntax, explicitly launch `powershell.exe -NoProfile -Command "..."`. Environment overrides are JSON, kept on disk and excluded from API list results. Empty env editor text preserves existing overrides; `{}` clears them.
+PTY mode provides an interactive terminal through pty4j (ConPTY on Windows). Pipe mode preserves separate stdout and stderr streams. The combined terminal labels and merges multiple sources, preserving ANSI colors while removing unrelated cursor controls. It is read-only; select a process tab to type into that process. Existing timestamps are preserved rather than duplicated. Display pause does not pause the process.
 
-## AI agents
+The application chrome uses neutral grey colors; ANSI colors printed by commands remain visible. Running means the process is alive, not ready or healthy. No CPU/memory metrics are inferred from log output.
 
-The UI, CLI and MCP adapter use one API and see the same live processes and output. All control functions are available to agents: command/group CRUD, start/stop/restart, terminal input/resize and cursor-based output reads.
+## Java demos
+
+The first startup seeds three stopped commands and a Java demos group:
+
+- Healthy: READY and regular heartbeat output.
+- Flaky: periodic warnings and stderr errors.
+- Chatty: frequent colored events.
+
+These are standalone Java child processes managed exactly like user commands. Their definitions live in `src/main/resources/processes/`. Set `-Dpdash.demo.enabled=false` to disable seeding. Nothing starts automatically.
+
+## Agent connection
+
+The embedded MCP server uses Streamable HTTP at `http://127.0.0.1:4310/mcp`. Configure an HTTP-capable MCP client with that URL and `Authorization: Bearer <token>`, where the token is read from `.pdash/token`. The Agent connection screen shows a configuration template. Client configuration formats vary.
+
+Tools cover definitions/groups, lifecycle, input/resize, incremental output, regex search, readiness, and process exit. `wait_for_ready` matches a supplied log regex; it is not an HTTP health probe. Wait calls are bounded to 30 seconds; resume from the returned cursor. See [API contract](docs/api.md).
+
+## State and migration
+
+Private state lives in `.pdash/` and is ignored by Git: definitions, groups, token, migration notes, and bounded output snapshots. Existing v1 user definitions are imported once with an explicit shell invocation. The old `state.json` stays untouched for rollback. Legacy demo scripts are replaced by Java demos. Migration failures are recorded in `migration-v2.json`; original definitions remain in `state.json`.
+
+Optional `.pdash/processes/*.yaml` files seed new IDs at startup. Existing saved definitions take precedence. Logs retain up to 12,000 events / roughly 2 MiB of text and metadata, with snapshots once per second. A crash may lose the last second of output. Cursors survive normal restarts; clients must handle `truncated` when history expires or the data directory changes.
+
+## Development and checks
 
 ```sh
-node bin/pdash.js status
-node bin/pdash.js start <command-id>
-node bin/pdash.js logs <command-id> <after-cursor>
-node bin/pdash.js watch
-```
-
-Add the stdio adapter to your agent's MCP settings (replace the path):
-
-```json
-{
-  "mcpServers": {
-    "p-dash": {
-      "command": "node",
-      "args": ["C:/Users/Admin/ai/cloudaiprojects/p-dash/bin/mcp.js"]
-    }
-  }
-}
-```
-
-Start the p-dash server first. The adapter discovers `.pdash/token` relative to its own project, so it works regardless of the agent's working directory. Its stdout is reserved for MCP protocol messages. `PDASH_URL`, `PDASH_DATA` and `PDASH_TOKEN` can override connection settings. See [the API contract](docs/api.md) and [agent instructions](AGENTS.md).
-
-## Architecture and operational boundaries
-
-React + Vite, Fastify + Zod, node-pty + xterm.js, and the official MCP SDK. Each terminal gets an isolated native host process to contain ConPTY faults and resource lifetime. The daemon manages state and ownership; clients are disposable. See [the architecture decisions](docs/architecture.md).
-
-State lives in ignored `.pdash/`: definitions, private environment overrides, bearer token and bounded recent output. Retention defaults to 4 MiB / 12,000 events globally. Snapshots are atomic and debounced to one second; abrupt crashes can lose recent output. Tokens and log files are local secrets. POSIX file modes are restrictive; on Windows they inherit your account directory ACLs.
-
-Stop sends Ctrl-C and allows three seconds for graceful exit, then terminates the process tree. Server shutdown stops its commands; a browser disconnect does not. After a daemon restart, commands begin stopped and never auto-start. Intentionally detached children are not guaranteed to remain under supervision. Use one server per state directory. This app is not an OS service installer, persistent job scheduler, remote shell service or log archive.
-
-The server binds only to loopback and rejects unexpected Host/Origin values. All API controls require a local bearer token. Don't expose it through a public reverse proxy: commands run with the server user's OS privileges. The browser gets its token only through a same-origin session bootstrap.
-
-`PDASH_PORT` changes the production port (default 4310). `PDASH_DATA` selects another state directory. Development proxy settings default to 4310.
-
-## Validate
-
-```sh
+cd frontend
+npm ci
 npm test
 npm run build
+cd ..
+mvn test
+mvn package
 ```
 
-Tests launch real short-lived terminal fixtures and check color/input, concurrent starts, shutdown, restart, exit codes, configuration persistence, bounded replay, authentication and end-to-end MCP/SSE behavior. Demo state, tokens, dependencies and generated builds are excluded from Git.
+Build the frontend before Maven packaging; Maven copies `frontend/dist` into the Quarkus application. For UI development, run Quarkus on 4310 and `npm run dev` in `frontend/` (Vite proxies API and WebSocket requests). Tests use an isolated state directory and random HTTP port; they launch real child JVMs and PTYs.
+
+Windows is verified here. The pty4j backend supports Unix, but lifecycle behavior still needs a run on those platforms. Use [architecture](docs/architecture.md) for package responsibilities and tradeoffs.

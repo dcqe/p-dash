@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.example</groupId><artifactId>p-dash</artifactId><version>2.0.0</version>
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <quarkus.version>3.33.3</quarkus.version><mcp.version>1.13.2</mcp.version>
+    <surefire.version>3.5.3</surefire.version>
+  </properties>
+  <dependencyManagement><dependencies><dependency><groupId>io.quarkus.platform</groupId><artifactId>quarkus-bom</artifactId><version>${quarkus.version}</version><type>pom</type><scope>import</scope></dependency></dependencies></dependencyManagement>
+  <dependencies>
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-rest-jackson</artifactId></dependency>
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-reactive-routes</artifactId></dependency>
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-websockets</artifactId></dependency>
+    <dependency><groupId>io.quarkiverse.mcp</groupId><artifactId>quarkus-mcp-server-http</artifactId><version>${mcp.version}</version></dependency>
+    <dependency><groupId>org.jetbrains.pty4j</groupId><artifactId>pty4j</artifactId><version>0.13.13</version></dependency>
+    <dependency><groupId>com.fasterxml.jackson.dataformat</groupId><artifactId>jackson-dataformat-yaml</artifactId></dependency>
+    <dependency><groupId>com.google.re2j</groupId><artifactId>re2j</artifactId><version>1.8</version></dependency>
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-junit5</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>io.rest-assured</groupId><artifactId>rest-assured</artifactId><scope>test</scope></dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin><groupId>io.quarkus.platform</groupId><artifactId>quarkus-maven-plugin</artifactId><version>${quarkus.version}</version><extensions>true</extensions><executions><execution><goals><goal>build</goal><goal>generate-code</goal><goal>generate-code-tests</goal></goals></execution></executions></plugin>
+      <plugin><artifactId>maven-compiler-plugin</artifactId><version>3.14.0</version><configuration><parameters>true</parameters></configuration></plugin>
+      <plugin><artifactId>maven-surefire-plugin</artifactId><version>${surefire.version}</version><configuration><systemPropertyVariables><java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager></systemPropertyVariables></configuration></plugin>
+      <plugin><artifactId>maven-resources-plugin</artifactId><version>3.3.1</version><executions><execution><id>web-ui</id><phase>process-resources</phase><goals><goal>copy-resources</goal></goals><configuration><outputDirectory>${project.build.outputDirectory}/META-INF/resources</outputDirectory><resources><resource><directory>frontend/dist</directory></resource></resources></configuration></execution></executions></plugin>
+    </plugins>
+  </build>
+</project>
