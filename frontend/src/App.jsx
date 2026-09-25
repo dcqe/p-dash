@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ChevronRight,
   Download,
+  PanelLeftClose,
+  PanelLeftOpen,
   Folder,
   Layers,
   Pause,
   Pencil,
   Play,
   Plus,
-  Radio,
   RotateCcw,
   Search,
   Square,
@@ -21,6 +21,7 @@ import { active, ago, plain, statusLabel } from './ui.js';
 import TerminalPane from './terminal/TerminalPane.jsx';
 import CommandDialog from './process/CommandDialog.jsx';
 import WorkspaceDialog from './process/WorkspaceDialog.jsx';
+import WorkspacePicker from './process/WorkspacePicker.jsx';
 import {
   readView,
   remember,
@@ -31,6 +32,13 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const dashboard = useDashboard(setToast);
   const [selected, setSelected] = useState(null);
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => window.innerWidth >= 1280);
+  useEffect(() => {
+    const wide = window.matchMedia('(min-width: 1280px)');
+    const update = () => setSidebarExpanded(wide.matches);
+    wide.addEventListener('change', update);
+    return () => wide.removeEventListener('change', update);
+  }, []);
   const workspace = dashboard.workspaces.find((w) => w.id === selected) || dashboard.workspaces[0];
   useEffect(() => {
     if (!selected && dashboard.workspaces.length) setSelected(dashboard.workspaces[0].id);
@@ -49,10 +57,12 @@ export default function App() {
       onSwitch={setSelected}
       toast={toast}
       setToast={setToast}
+      sidebarExpanded={sidebarExpanded}
+      onToggleSidebar={() => setSidebarExpanded((value) => !value)}
     />
   );
 }
-function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast }) {
+function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, sidebarExpanded, onToggleSidebar }) {
   const [saved] = useState(() => readView(workspace.id));
   const [tab, setTab] = useState(saved.tab);
   const [query, setQuery] = useState(saved.query);
@@ -119,32 +129,38 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast })
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <a className="brand" href="/">
-          <span className="brand-mark">
-            <TerminalSquare size={21} />
-          </span>
-          p-dash
-        </a>
-        <div className="workspace-switcher" style={{ '--workspace-accent': workspace.color }}>
-          <label htmlFor="workspace-select" className="section-label">
-            WORKSPACE
-          </label>
-          <div className="workspace-choice">
-            <span className="workspace-avatar">{workspace.name.slice(0, 1).toUpperCase()}</span>
-            <select
-              id="workspace-select"
-              value={workspace.id}
-              onChange={(e) => onSwitch(e.target.value)}
-            >
-              {workspaces.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-            </select>
+    <div className={`app-shell ${sidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
+      <aside className="sidebar" aria-label="Workspace navigation">
+        <div className="sidebar-header">
+          {sidebarExpanded && (
+            <div className="brand">
+              <span className="brand-mark"><TerminalSquare size={21} /></span>
+              p-dash
+            </div>
+          )}
+        <button className="icon sidebar-toggle" onClick={onToggleSidebar}
+          aria-label={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+          title={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+          aria-expanded={sidebarExpanded}>
+          {sidebarExpanded ? <PanelLeftClose size={19} /> : <PanelLeftOpen size={19} />}
+        </button>
+        </div>
+        {!sidebarExpanded ? (
+          <div className="sidebar-rail">
+            <WorkspacePicker workspace={workspace} workspaces={workspaces} onSwitch={onSwitch} compact />
+            <button className="icon" aria-label="Workspace settings" title="Workspace settings"
+              onClick={() => setDialog({ type: 'workspace', workspace })}><Pencil size={17} /></button>
+            <button className="icon" aria-label="New workspace" title="New workspace"
+              onClick={() => setDialog({ type: 'workspace' })}><Folder size={17} /></button>
+            <button className="icon" aria-label="Add command" title="Add command"
+              onClick={() => setDialog({ type: 'command' })}><Plus size={18} /></button>
           </div>
+        ) : <>
+        <div className="workspace-switcher" style={{ '--workspace-accent': workspace.color }}>
+          <div className="section-label">
+            WORKSPACE
+          </div>
+          <WorkspacePicker workspace={workspace} workspaces={workspaces} onSwitch={onSwitch} />
           <p className="workspace-description">
             {workspace.description || 'Your commands, your space.'}
           </p>
@@ -162,10 +178,6 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast })
             </button>
           </div>
         </div>
-        <button className="nav-item selected" onClick={() => setTab('combined')}>
-          <Layers size={17} />
-          All commands<span>{commands.length}</span>
-        </button>
         <button className="nav-item" onClick={() => setDialog({ type: 'command' })}>
           <Plus size={17} />
           Add command
@@ -188,19 +200,9 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast })
             p-dash <span>v2.0.0</span>
           </div>
         </div>
+        </>}
       </aside>
       <main>
-        <header className="topbar">
-          <div>
-            <span>{workspace.name}</span>
-            <ChevronRight size={13} />
-            <strong>All commands</strong>
-          </div>
-          <span className="host-label">
-            <Radio size={13} />
-            127.0.0.1
-          </span>
-        </header>
         <section className="process-section">
           <div className="section-toolbar">
             <div>

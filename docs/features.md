@@ -4,7 +4,10 @@ This is the inventory of implemented user-facing behavior. Keep it current whene
 
 ## Workspaces
 
+- The expanded sidebar header aligns the p-dash logo with the collapse toggle. The logo is decorative text and an icon; clicking it does not navigate or reload the app.
+- The sidebar always stays on the left. Its toggle switches between full navigation and a compact rail with workspace selection and action icons. It starts expanded at widths of 1280px or more, collapsed below that; crossing that breakpoint restores the automatic layout. Manual toggles last until crossing the breakpoint or reloading, and survive workspace switches. This preference is not saved.
 - Switch from the workspace selector in the sidebar, including on narrow screens. Each workspace has its own command definitions, lifecycle display, output view, terminal tabs, and batch controls.
+- The workspace dropdown shows accent-colored initials, names, descriptions, and a checkmark for the current workspace. The collapsed rail uses the same dropdown. Arrow keys and Home/End navigate options; Enter selects, Escape or an outside click closes. Opening the menu changes no saved settings; selection switches the current view only.
 - **New** creates an empty workspace. **Settings** changes its name, description, accent color, and default working directory. New commands start with that directory in their editor; existing command directories do not change.
 - Workspace settings and each command's workspace assignment persist on the server. New commands without an explicit workspace use **Default**.
 - On each application launch, the first workspace listed by the server configuration opens. The selected terminal tab, text filter, display pause, and combined-stream source selection persist separately per workspace in this browser. If browser storage is unavailable, views still work for the current session.
@@ -14,6 +17,7 @@ This is the inventory of implemented user-facing behavior. Keep it current whene
 
 ## Commands and lifecycle
 
+- The main area starts with **Commands** and its controls. Workspace selection stays in the sidebar; there is no breadcrumb or host-address bar above Commands.
 - **Add command** defines a name, one executable/argument per line, existing absolute directory, optional environment overrides, identity color, and PTY or pipe mode. Shell syntax requires an explicit shell.
 - Colors are generated from stable command IDs when omitted, and appear on cards and combined source labels.
 - Each card opens its terminal and provides start, stop, restart, and edit controls. Stop before editing or deleting a definition. REST partial edits preserve omitted environment overrides; MCP full updates must supply them.
@@ -25,6 +29,7 @@ This is the inventory of implemented user-facing behavior. Keep it current whene
 
 ## Terminals and combined output
 
+- Open merged output through the **Combined stream** terminal tab; there is no duplicate All commands shortcut in the sidebar.
 - A process tab shows its own terminal and sends keyboard input only to that process. PTY mode supports native interactivity and resizing; pipe mode captures stdout/stderr separately.
 - **Combined stream** is read-only and merges selected commands with colored source labels and timestamps. ANSI colors are retained, unrelated cursor controls are stripped, and existing timestamps are not duplicated.
 - Click source chips to include or exclude commands. **All** includes current and future commands in that workspace; **Active now** selects the currently live processes; **None** clears selection. Explicit selections remain selected after stop/restart and do not automatically follow future liveness changes. Stopped commands can be selected to review retained output.
