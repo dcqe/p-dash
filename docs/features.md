@@ -35,7 +35,7 @@ This is the inventory of implemented user-facing behavior. Keep it current whene
 
 ## Local application and agent access
 
-- `run.cmd` launches the single Java owner, with optional browser launch, forced rebuild, and Quarkus development mode. It rebuilds stale inputs, reuses installed frontend dependencies, and takes ownership of the configured loopback port.
+- IntelliJ's shared **p-dash — rebuild and run** configuration runs root `run.ps1`: each launch restores locked frontend dependencies, tests/builds the UI, and clean-packages/tests Java before starting it. Build failures never launch stale artifacts. The script requests orderly shutdown of the previous server, then force-stops remaining configured-port listeners and their children. Saved commands are preserved but never automatically started. Use Rerun without closing an external terminal; `-NoBrowser` suppresses browser launch. See README for setup and limitations.
 - Closing the browser leaves commands running. Ctrl+C, closing the runner, or authenticated shutdown stops managed commands. PTYs receive Ctrl+C before forced termination; pipe processes receive OS termination directly. Descendants are also cleaned up.
 - First startup seeds Healthy, Flaky, and Chatty Java command definitions in Default; none starts automatically. Demo seeding can be disabled. YAML files can seed additional IDs; saved definitions take precedence.
 - Local bearer authentication protects REST and embedded Streamable HTTP MCP. Host/Origin checks and short-lived, single-use terminal tickets protect browser access. Environment values are excluded from status responses.
@@ -48,4 +48,4 @@ This is the inventory of implemented user-facing behavior. Keep it current whene
 - Launcher settings control port and browser launch; demoEnabled controls seeding. Environment/CLI overrides remain available. See [configuration](configuration.md) for the full format and direct-Java limitations.
 - Logs live in logs/, credentials in auth/, lifecycle and legacy PID files in runtime/, optional YAML seeds in imports/processes/, and migration originals in backups/. The root owner.lock remains for compatibility with older servers. Unknown files are left alone.
 - Startup migrates the old flat layout without changing saved definitions or the bearer token. Invalid config, duplicate IDs, and missing workspace references prevent startup without replacing the config. Existing config wins over legacy definitions; backups retain conflicting legacy files.
-- The launcher serves a built frontend. Its -Dev mode reloads Java only; use npm run dev in frontend/ separately for Vite hot reload.
+- The launcher serves a freshly built frontend; it has no dev-mode switch. Use `mvn quarkus:dev` and `npm run dev` in frontend/ separately for hot reload.

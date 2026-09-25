@@ -2,9 +2,8 @@
 
 ```text
 p-dash/
-├── run.cmd                         Windows entry point
-├── scripts/
-│   └── run.ps1                     Foreground launcher and port ownership
+├── run.ps1                         All Windows build/replace/run logic
+├── .run/p-dash.run.xml              Shared IntelliJ Shell Script configuration
 ├── pom.xml                         Quarkus/Maven build
 ├── src/
 │   ├── main/

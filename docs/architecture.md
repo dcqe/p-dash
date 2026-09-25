@@ -43,7 +43,7 @@ Definitions hold an explicit argument vector, directory, env overrides, and PTY/
 
 PTY stop requests send Ctrl+C, wait three seconds, then terminate the process tree if needed. Pipe processes receive OS termination directly because stdin control bytes are not signals. Captured descendants are also terminated if the parent exits during the grace period. An exit watcher drains remaining output before publishing final state. Stop/edit/delete guards prevent changing an active definition. Shutdown stops managed processes concurrently and flushes output.
 
-`run.cmd` invokes its PowerShell helper, which directly invokes Java in the same console. Java watches the helper PID to cover abrupt runner termination. This is local development supervision, not a hardened OS service: killing Java forcibly or an OS crash can bypass graceful cleanup. Windows detached children that deliberately escape ancestry are outside this guarantee.
+The shared IntelliJ Shell Script configuration invokes root `run.ps1`, which contains all launch logic. It requests authenticated shutdown of the previous server, waits for exit, force-stops remaining port owners, rebuilds the frontend and clean-packages Java, then directly invokes Java in the same console. Java watches the script PID to cover abrupt runner termination. IntelliJ uses a single configuration instance. This is local development supervision, not a hardened OS service: killing Java forcibly or an OS crash can bypass graceful cleanup. Windows detached children that deliberately escape ancestry are outside this guarantee.
 
 ## Output and consistency
 

@@ -4,24 +4,22 @@ A dashboard for long-running commands. One Quarkus application owns processes, p
 
 ## Run
 
-On this machine, run `./run.cmd` from this folder. The verified portable JDK and Maven are in ignored `.tools/`. The packaged app is ready to run.
+In IntelliJ IDEA, select **p-dash — rebuild and run** from the run configuration dropdown and click Run. The shared configuration is in `.run/p-dash.run.xml` and uses the bundled **Shell scripts** plugin. Use Rerun for subsequent launches; no separate terminal needs closing. If the configuration is not visible, reopen the project and check that Shell scripts is enabled.
 
 ```powershell
-.\run.cmd                 # run in this console and open the browser
-.\run.cmd -NoBrowser      # same application, without opening a browser
-.\run.cmd -Rebuild        # rebuild the UI and Java app, including tests
-.\run.cmd -Dev            # Quarkus dev mode; Java changes reload without packaging
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\run.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\run.ps1 -NoBrowser
 ```
 
-Keep that console open. Ctrl+C stops p-dash and its managed commands. A Java owner watcher also shuts down if the runner disappears. Closing the browser does not stop processes. There is no detached Node server or second console. The PowerShell file in `scripts/` is an implementation helper; `run.cmd` is the single launcher.
+All launch logic lives in root `run.ps1`; the small IntelliJ XML only selects the interpreter and script. The old `run.cmd` and `scripts/run.ps1` are replaced by this one script. Existing personal run configurations pointing to those files should be replaced by the shared configuration. Windows PowerShell is used without an extra PowerShell plugin. Output stays in IntelliJ's Run window. Stop/Ctrl+C stops the application; Java also watches the runner PID. Closing the browser does not stop processes.
 
-For faster backend iteration, `run.cmd -Dev` starts Quarkus dev mode. Java changes are hot reloaded by Quarkus. Frontend changes still require `npm run build` from `frontend/` because the dashboard is served as a packaged static resource; use the normal launcher when you need a production-like run.
+Every run performs `npm ci`, frontend tests and a Vite production build, followed by `mvn clean package` including Java tests. Deleted Java files and old bundled assets cannot survive a clean package. Build failures stop the run rather than launching an older artifact. This trades startup speed for reproducible fresh builds and may need network access to restore dependencies. Save edits before running; changes made during a build require another run. There is no Vite hot reload in this configuration.
 
-The launcher rebuilds when application sources or build inputs are newer than the packaged app. `-Rebuild` forces a rebuild even when timestamps have not changed.
+The old `-Dev` and `-Rebuild` flags are no longer needed. For separate hot-reload development, use `mvn quarkus:dev` and `npm run dev` in `frontend/`.
 
-The default address is http://127.0.0.1:4310. `config.json` settings control the launcher port and browser launch. `PDASH_PORT` and `PDASH_DATA` override the port and state directory; `-NoBrowser` overrides browser launch. Before launch, the runner takes ownership of the configured loopback port: every existing listener and its child process tree is force-stopped, then the new Java instance is started. Keep the port dedicated to p-dash. Agents can request an authenticated `POST /api/shutdown`.
+The default address is http://127.0.0.1:4310. `config.json` settings control the launcher port and browser launch. `PDASH_PORT` and `PDASH_DATA` override the port and state directory; `-NoBrowser` overrides browser launch. Before rebuilding, the runner requests authenticated shutdown and waits for the old app to exit, flushing state and stopping managed commands. Any remaining listener and its child tree are force-stopped. Keep the port dedicated to p-dash. Processes are not restarted automatically. IntelliJ allows only one instance of this configuration; if prompted on Rerun, choose Stop and Rerun. The old application stays stopped if the build fails.
 
-On another machine, install JDK 21+, Maven 3.9+, and Node 22+/npm for frontend builds. Set `JAVA_HOME` and put Maven/npm on PATH, then run `run.cmd -Rebuild`. Node is a build tool only. After packaging, the entire `target/quarkus-app` directory can run with:
+On another Windows machine, install JDK 21+, Maven 3.9+, and Node 22+/npm. Set `JAVA_HOME` and put Maven/npm on PATH, then run the shared configuration or `run.ps1`. This machine can use its ignored portable JDK/Maven under `.tools/`. The IntelliJ interpreter path assumes Windows is installed at `C:/Windows`; adjust it if needed. Node is a build tool only. After packaging, the entire `target/quarkus-app` directory can run with:
 
 ```sh
 java -jar target/quarkus-app/quarkus-run.jar
