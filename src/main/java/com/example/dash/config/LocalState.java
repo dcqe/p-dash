@@ -1,6 +1,9 @@
 package com.example.dash.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.example.dash.process.ProcessConfig;
+import com.example.dash.process.Workspace;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -19,6 +22,7 @@ public class LocalState {
   private Path root;
   private java.nio.channels.FileChannel lockChannel;
   private java.nio.channels.FileLock lock;
+  private ObjectNode config;
 
   @PostConstruct
   void init() {
@@ -30,10 +34,114 @@ public class LocalState {
               root.resolve("owner.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
       lock = lockChannel.tryLock();
       if (lock == null) throw new IllegalStateException("Another p-dash instance owns " + root);
+      for (var folder : java.util.List.of("logs", "runtime", "auth", "backups", "imports"))
+        Files.createDirectories(root.resolve(folder));
+      loadConfig();
+      migrateFiles();
     } catch (IOException e) {
+      closeAfterFailure();
       throw new IllegalStateException(e);
+    } catch (RuntimeException e) {
+      closeAfterFailure();
+      throw e;
     }
   }
+
+  private void closeAfterFailure() {
+    try { unlock(); } catch (IOException ignored) { }
+  }
+
+  private void loadConfig() throws IOException {
+    if (Files.exists(file("config.json"))) {
+      var tree = mapper.readTree(file("config.json").toFile());
+      if (!(tree instanceof ObjectNode object)) throw new IOException("config.json must be an object");
+      config = object;
+    } else {
+      config = mapper.createObjectNode();
+      config.put("version", 1);
+      config.set("workspaces", legacyArray("workspaces.json"));
+      config.set("commands", legacyArray("processes.json"));
+    }
+    if (!config.path("version").isIntegralNumber() || config.path("version").asInt() != 1)
+      throw new IOException("Unsupported config.json version; expected 1");
+    if (!config.has("settings")) {
+      config.putObject("settings").put("port", 4310).put("openBrowser", true).put("demoEnabled", true);
+    }
+    var settings = config.path("settings");
+    if (!settings.isObject()
+        || !settings.path("port").isIntegralNumber()
+        || settings.path("port").asInt() < 1 || settings.path("port").asInt() > 65535
+        || !settings.path("openBrowser").isBoolean() || !settings.path("demoEnabled").isBoolean())
+      throw new IOException("settings requires port (1-65535), openBrowser and demoEnabled (booleans)");
+    if (!config.path("commands").isArray() || !config.path("workspaces").isArray())
+      throw new IOException("config.json requires commands and workspaces arrays");
+    for (var section : java.util.List.of("commands", "workspaces"))
+      for (var entry : config.path(section))
+        if (!entry.path("id").isTextual() || entry.path("id").asText().isBlank())
+          throw new IOException("Each " + section + " entry requires a stable id");
+    var workspaceIds = new java.util.HashSet<String>();
+    for (var w : mapper.treeToValue(config.get("workspaces"), Workspace[].class))
+      if (!workspaceIds.add(w.id())) throw new IOException("Duplicate workspace ID: " + w.id());
+    workspaceIds.add("default");
+    var commandIds = new java.util.HashSet<String>();
+    for (var c : mapper.treeToValue(config.get("commands"), ProcessConfig[].class)) {
+      if (!commandIds.add(c.id())) throw new IOException("Duplicate command ID: " + c.id());
+      if (!workspaceIds.contains(c.workspaceId())) throw new IOException("Unknown workspace: " + c.workspaceId());
+    }
+    write("config.json", config);
+    // Commit the unified document before archiving its inputs. An interrupted migration can resume.
+    archive("processes.json");
+    archive("workspaces.json");
+  }
+
+  private com.fasterxml.jackson.databind.JsonNode legacyArray(String name) throws IOException {
+    return Files.exists(root.resolve(name))
+        ? mapper.readTree(root.resolve(name).toFile()) : mapper.createArrayNode();
+  }
+
+  private void archive(String name) throws IOException {
+    moveLegacy(name, "backups/" + name);
+  }
+
+  private void moveLegacy(String name, String destination) throws IOException {
+    var source = root.resolve(name);
+    var target = root.resolve(destination);
+    if (Files.exists(source)) {
+      // Never replace a newer destination or lose either copy after a partial migration.
+      if (Files.exists(target)) target = root.resolve("backups/" + name.replace('/', '-') + "-" + java.util.UUID.randomUUID());
+      Files.move(source, target);
+    }
+  }
+
+  private void migrateFiles() throws IOException {
+    moveLegacy("logs.json", "logs/output.json");
+    moveLegacy("lifecycle.json", "runtime/lifecycle.json");
+    moveLegacy("token", "auth/token");
+    moveLegacy("processes", "imports/processes");
+    archive("groups.json");
+    archive("state.json");
+    try (var files = Files.list(root)) {
+      for (var p : files.filter(Files::isRegularFile).toList()) {
+        var name = p.getFileName().toString();
+        if (name.endsWith(".log")) moveLegacy(name, "logs/" + name);
+        if (name.endsWith(".pid")) moveLegacy(name, "runtime/" + name);
+      }
+    }
+  }
+
+  public synchronized <T> T readConfig(String section, Class<T> type) {
+    try { return mapper.treeToValue(config.get(section), type); }
+    catch (IOException e) { throw new IllegalStateException("Invalid configuration section: " + section, e); }
+  }
+
+  public synchronized void writeConfig(String section, Object value) {
+    var next = config.deepCopy();
+    next.set(section, mapper.valueToTree(value));
+    write("config.json", next);
+    config = next;
+  }
+
+  public boolean demoEnabled() { return config.path("settings").path("demoEnabled").asBoolean(); }
 
   @jakarta.annotation.PreDestroy
   void unlock() throws IOException {
@@ -62,7 +170,7 @@ public class LocalState {
   public synchronized void write(String name, Object value) {
     Path temporary = file(name + ".tmp");
     try {
-      mapper.writeValue(temporary.toFile(), value);
+      mapper.writerWithDefaultPrettyPrinter().writeValue(temporary.toFile(), value);
       restrict(temporary);
       try {
         Files.move(

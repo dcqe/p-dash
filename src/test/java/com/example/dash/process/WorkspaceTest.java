@@ -59,10 +59,10 @@ class WorkspaceTest {
               w.id(), new Workspace(null, "Renamed", "Updated", "#61DDAA", w.workingDirectory()));
       assertEquals("Renamed", updated.name());
       assertTrue(
-          Arrays.stream(state.read("workspaces.json", Workspace[].class, new Workspace[0]))
+          Arrays.stream(state.readConfig("workspaces", Workspace[].class))
               .anyMatch(saved -> saved.id().equals(w.id()) && saved.name().equals("Renamed")));
       var stored =
-          Arrays.stream(state.read("processes.json", ProcessConfig[].class, new ProcessConfig[0]))
+          Arrays.stream(state.readConfig("commands", ProcessConfig[].class))
               .filter(c -> c.id().equals(id))
               .findFirst()
               .orElseThrow();

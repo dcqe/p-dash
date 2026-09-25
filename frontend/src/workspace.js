@@ -20,13 +20,6 @@ export function remember(key, value) {
     /* Storage may be disabled. */
   }
 }
-export function lastWorkspace() {
-  try {
-    return JSON.parse(localStorage.getItem('pdash.workspace')) || 'default';
-  } catch {
-    return 'default';
-  }
-}
 export function workspaceCommands(commands, id) {
   return commands.filter((c) => (c.workspaceId || 'default') === id);
 }

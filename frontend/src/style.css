@@ -846,6 +846,38 @@ h2 {
 .dialog select:focus {
   border-color: #b1b1b1;
 }
+.color-picker-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dialog input.color-picker {
+  appearance: none;
+  width: 42px;
+  height: 34px;
+  padding: 3px;
+  flex: 0 0 42px;
+  border: 1px solid #626262;
+  border-radius: 6px;
+  background: #151515;
+  cursor: pointer;
+}
+.dialog input.color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.dialog input.color-picker::-webkit-color-swatch {
+  border: 0;
+  border-radius: 3px;
+}
+.dialog input.color-picker::-moz-color-swatch {
+  border: 0;
+  border-radius: 3px;
+}
+.color-value {
+  color: #cfcfcf;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
 .dialog textarea,
 .dialog select {
   font-family: Consolas, monospace;
@@ -896,6 +928,16 @@ h2 {
   color: #ffffff;
   background: #cf293b;
   border-color: #eb5361;
+}
+.danger-outline {
+  color: #f08a94;
+  background: transparent;
+  border-color: #754049;
+}
+.danger-outline:hover:not(:disabled) {
+  color: #ffb5bc;
+  background: #3a1d21;
+  border-color: #a34b57;
 }
 .toast {
   position: fixed;
@@ -1298,8 +1340,52 @@ main {
   color: #aaa;
 }
 .workspace-delete {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
   border-top: 1px solid #444;
-  padding-top: 12px;
+  margin-top: 22px;
+  min-height: 102px;
+  padding: 17px 0 2px;
+  box-sizing: border-box;
+}
+.workspace-delete-copy {
+  min-width: 0;
+}
+.workspace-delete-copy strong {
+  display: block;
+  color: #e0a0a6;
+  font-size: 12px;
+}
+.workspace-delete-copy p {
+  margin: 5px 0 0;
+  color: #8d8d8d;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.workspace-delete button {
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+.workspace-delete-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #c9a0a4;
+  font-size: 11px;
+  text-align: right;
+}
+.workspace-delete-confirm > div {
+  display: flex;
+  gap: 7px;
+}
+.workspace-delete-confirm button {
+  padding: 7px 10px;
+  white-space: nowrap;
 }
 @media (max-width: 760px) {
   .app-shell {
@@ -1313,6 +1399,21 @@ main {
   .workspace-switcher {
     margin: 12px 0 6px;
     padding: 10px;
+  }
+  .workspace-delete {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 130px;
+  }
+  .workspace-delete button {
+    align-self: flex-start;
+  }
+  .workspace-delete-confirm {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
   }
   .workspace-switcher .section-label {
     display: block;

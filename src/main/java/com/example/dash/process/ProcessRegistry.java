@@ -16,20 +16,15 @@ public class ProcessRegistry {
 
   @PostConstruct
   void load() {
-    var definitions = state.read("processes.json", ProcessConfig[].class, new ProcessConfig[0]);
-    if (!java.nio.file.Files.exists(state.file("accent-colors-v1.json"))) {
-      definitions = migrateLegacyAccents(definitions);
-      state.write("processes.json", definitions);
-      state.write("accent-colors-v1.json", Map.of("complete", true));
-    }
+    var definitions = state.readConfig("commands", ProcessConfig[].class);
     for (var c : definitions) processes.put(c.id(), new ManagedProcess(c));
-    var saved = state.read("lifecycle.json", ProcessSnapshot[].class, new ProcessSnapshot[0]);
-    if (!java.nio.file.Files.exists(state.file("lifecycle.json"))) {
+    var saved = state.read("runtime/lifecycle.json", ProcessSnapshot[].class, new ProcessSnapshot[0]);
+    if (!java.nio.file.Files.exists(state.file("runtime/lifecycle.json"))) {
       // Recover known prior runs on upgrade from retained state events, without reviving PIDs.
       var recovered = new LinkedHashMap<String, ProcessSnapshot>();
       var oldLogs =
           state.read(
-              "logs.json",
+              "logs/output.json",
               com.fasterxml.jackson.databind.JsonNode.class,
               mapper.createObjectNode());
       for (var entry : oldLogs.path("entries")) {
@@ -69,40 +64,7 @@ public class ProcessRegistry {
       }
       history.put(old.id(), p.snapshot());
     }
-    state.write("lifecycle.json", history.values());
-  }
-
-  /** Upgrade only the old built-in grey swatches, once; preserve custom colors. */
-  static ProcessConfig[] migrateLegacyAccents(ProcessConfig[] definitions) {
-    var legacy =
-        Set.of(
-            "#bcbcbc", "#d6d6d6", "#b8b8b8", "#969696", "#e4e4e4", "#7c7c7c", "#d6d8d4", "#b8bbb6",
-            "#969a95", "#e4e5e2", "#7c817b");
-    var used = new HashSet<String>();
-    for (var c : definitions)
-      if (!legacy.contains(c.color().toLowerCase(Locale.ROOT)))
-        used.add(c.color().toLowerCase(Locale.ROOT));
-    return Arrays.stream(definitions)
-        .map(
-            c -> {
-              if (!legacy.contains(c.color().toLowerCase(Locale.ROOT))) return c;
-              String color = ProcessConfig.generatedColor(c.id());
-              for (int attempt = 1;
-                  used.contains(color.toLowerCase(Locale.ROOT)) && attempt < 100;
-                  attempt++) color = ProcessConfig.generatedColor(c.id() + "-" + attempt);
-              used.add(color.toLowerCase(Locale.ROOT));
-              return new ProcessConfig(
-                  c.id(),
-                  c.name(),
-                  c.command(),
-                  c.workingDirectory(),
-                  c.env(),
-                  color,
-                  c.mode(),
-                  c.readiness(),
-                  c.workspaceId());
-            })
-        .toArray(ProcessConfig[]::new);
+    state.write("runtime/lifecycle.json", history.values());
   }
 
   public synchronized ManagedProcess get(String id) {
@@ -125,16 +87,16 @@ public class ProcessRegistry {
   public synchronized void remove(String id) {
     processes.remove(id);
     history.remove(id);
-    state.write("lifecycle.json", history.values());
+    state.write("runtime/lifecycle.json", history.values());
     save();
   }
 
   public synchronized void save() {
-    state.write("processes.json", processes.values().stream().map(p -> p.config).toList());
+    state.writeConfig("commands", processes.values().stream().map(p -> p.config).toList());
   }
 
   public synchronized void recordLifecycle(ProcessSnapshot snapshot) {
     history.put(snapshot.id(), snapshot);
-    state.write("lifecycle.json", history.values());
+    state.write("runtime/lifecycle.json", history.values());
   }
 }

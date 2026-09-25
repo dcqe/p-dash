@@ -2,7 +2,20 @@ param([switch]$NoBrowser, [switch]$Rebuild, [switch]$Dev)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
-$port = if ($env:PDASH_PORT) { [int]$env:PDASH_PORT } else { 4310 }
+$dataRoot = if ($env:PDASH_DATA) { $env:PDASH_DATA } else { Join-Path $projectRoot '.pdash' }
+$configPath = Join-Path $dataRoot 'config.json'
+$settings = $null
+if (Test-Path -LiteralPath $configPath) {
+    $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+    if ($config.version -ne 1) { throw 'Unsupported config.json version; expected 1.' }
+    $settings = $config.settings
+    if ($settings -and ($settings.port -notmatch '^\d+$' -or [int]$settings.port -lt 1 -or [int]$settings.port -gt 65535 -or $settings.openBrowser -isnot [bool] -or $settings.demoEnabled -isnot [bool])) {
+        throw 'Invalid config.json settings: port must be 1-65535 and openBrowser/demoEnabled must be booleans.'
+    }
+}
+$port = if ($env:PDASH_PORT) { [int]$env:PDASH_PORT } elseif ($settings) { [int]$settings.port } else { 4310 }
+if ($port -lt 1 -or $port -gt 65535) { throw 'Port must be 1-65535.' }
+$openBrowser = -not $NoBrowser -and (-not $settings -or $settings.openBrowser)
 $javaHome = $env:JAVA_HOME
 if (-not $javaHome) {
     $portable = Get-ChildItem -LiteralPath (Join-Path $projectRoot '.tools') -Directory -Filter 'jdk-*' -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -38,7 +51,7 @@ if ($Dev) {
         $mvn = Join-Path $portableMaven.FullName 'bin\mvn.cmd'
     }
     $env:PDASH_OWNER_PID = "$PID"
-    $env:PDASH_OPEN_BROWSER = if ($NoBrowser) { 'false' } else { 'true' }
+    $env:PDASH_OPEN_BROWSER = if ($openBrowser) { 'true' } else { 'false' }
     Write-Host "p-dash dev mode runs in this window. Java changes reload through Quarkus."
     & $mvn '-Dmaven.repo.local=.tools/m2' "-Dquarkus.http.port=$port" 'quarkus:dev'
     exit $LASTEXITCODE
@@ -87,8 +100,8 @@ if ($Rebuild -or $stale -or -not (Test-Path -LiteralPath $jar)) {
     if ($LASTEXITCODE -ne 0) { throw 'Java build or tests failed.' }
 }
 $env:PDASH_OWNER_PID = "$PID"
-$env:PDASH_OPEN_BROWSER = if ($NoBrowser) { 'false' } else { 'true' }
+$env:PDASH_OPEN_BROWSER = if ($openBrowser) { 'true' } else { 'false' }
 Write-Host "p-dash runs in this window. Ctrl+C or closing this window stops it and its managed commands."
 # Direct invocation inherits this console. The Java owner watcher also handles an abruptly closed runner.
-& $java '-Djava.awt.headless=false' -jar $jar
+& $java '-Djava.awt.headless=false' "-Dquarkus.http.port=$port" -jar $jar
 exit $LASTEXITCODE

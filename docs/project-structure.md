@@ -49,7 +49,7 @@ p-dash/
 
 These directories are created or used locally and are ignored by Git:
 
-- `.pdash/` stores command definitions, workspaces, bounded logs, token and migration state.
+- `.pdash/config.json` stores user settings, workspaces, and command definitions. `logs/`, `runtime/`, `auth/`, `imports/`, and `backups/` separate other purposes; see [configuration](configuration.md).
 - `.tools/` contains the portable JDK/Maven tools used on this workstation.
 - `target/` contains Maven and Quarkus build output.
 - `frontend/node_modules/` contains browser build dependencies.

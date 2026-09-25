@@ -19,7 +19,7 @@ For faster backend iteration, `run.cmd -Dev` starts Quarkus dev mode. Java chang
 
 The launcher rebuilds when application sources or build inputs are newer than the packaged app. `-Rebuild` forces a rebuild even when timestamps have not changed.
 
-The default address is http://127.0.0.1:4310. `PDASH_PORT` and `PDASH_DATA` override the port and state directory. Before launch, the runner takes ownership of the configured loopback port: every existing listener and its child process tree is force-stopped, then the new Java instance is started. Keep the port dedicated to p-dash. Agents can request an authenticated `POST /api/shutdown`.
+The default address is http://127.0.0.1:4310. `config.json` settings control the launcher port and browser launch. `PDASH_PORT` and `PDASH_DATA` override the port and state directory; `-NoBrowser` overrides browser launch. Before launch, the runner takes ownership of the configured loopback port: every existing listener and its child process tree is force-stopped, then the new Java instance is started. Keep the port dedicated to p-dash. Agents can request an authenticated `POST /api/shutdown`.
 
 On another machine, install JDK 21+, Maven 3.9+, and Node 22+/npm for frontend builds. Set `JAVA_HOME` and put Maven/npm on PATH, then run `run.cmd -Rebuild`. Node is a build tool only. After packaging, the entire `target/quarkus-app` directory can run with:
 
@@ -73,11 +73,9 @@ See [Agent and AI setup](docs/agent-setup.md) for MCP, REST, and CLI configurati
 
 Tools cover definitions/workspaces, lifecycle, input/resize, incremental output, regex search, readiness, and process exit. `wait_for_ready` matches a supplied log regex; it is not an HTTP health probe. Wait calls are bounded to 30 seconds; resume from the returned cursor. See [API contract](docs/api.md).
 
-## State and migration
+## State
 
-Private state lives in `.pdash/` and is ignored by Git: definitions, workspace settings, token, migration notes, and bounded output snapshots. Existing v1 user definitions are imported once with an explicit shell invocation. The old `state.json` stays untouched for rollback. Legacy demo scripts are replaced by Java demos. Migration failures are recorded in `migration-v2.json`; original definitions remain in `state.json`.
-
-Optional `.pdash/processes/*.yaml` files seed new IDs at startup. Existing saved definitions take precedence. Logs retain up to 12,000 events / roughly 2 MiB of text and metadata, with snapshots once per second. A crash may lose the last second of output. Cursors survive normal restarts; clients must handle `truncated` when history expires or the data directory changes.
+Private state lives in `.pdash/` and is ignored by Git. Edit `.pdash/config.json` while p-dash is stopped to configure workspaces, commands, and launcher settings in one place. UI/API edits save to this same file. See [Configuration and storage](docs/configuration.md) for the format and migration details. Credentials live in `auth/`, output in `logs/`, and lifecycle state in `runtime/`. Old flat files are migrated automatically on startup, with old definitions preserved in `backups/`. Optional `.pdash/imports/processes/*.yaml` files seed new IDs; saved definitions take precedence. Logs retain up to 12,000 events / roughly 2 MiB of text and metadata, with snapshots once per second. A crash may lose the last second of output. Cursors survive normal restarts; clients must handle `truncated` when history expires or the data directory changes.
 
 ## Development and checks
 

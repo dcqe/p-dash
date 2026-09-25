@@ -24,18 +24,17 @@ import WorkspaceDialog from './process/WorkspaceDialog.jsx';
 import {
   readView,
   remember,
-  lastWorkspace,
   workspaceCommands,
   streamCommands,
 } from './workspace.js';
 export default function App() {
   const [toast, setToast] = useState(null);
   const dashboard = useDashboard(setToast);
-  const [selected, setSelected] = useState(lastWorkspace);
+  const [selected, setSelected] = useState(null);
   const workspace = dashboard.workspaces.find((w) => w.id === selected) || dashboard.workspaces[0];
   useEffect(() => {
-    if (workspace) remember('pdash.workspace', workspace.id);
-  }, [workspace?.id]);
+    if (!selected && dashboard.workspaces.length) setSelected(dashboard.workspaces[0].id);
+  }, [dashboard.workspaces, selected]);
   if (!workspace)
     return (
       <div className="loading-state" role="status">

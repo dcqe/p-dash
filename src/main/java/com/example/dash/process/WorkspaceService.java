@@ -17,11 +17,11 @@ public class WorkspaceService {
 
   @PostConstruct
   void load() {
-    for (var w : state.read("workspaces.json", Workspace[].class, new Workspace[0]))
+    for (var w : state.readConfig("workspaces", Workspace[].class))
       workspaces.put(w.id(), w);
     workspaces.putIfAbsent(
         "default", new Workspace("default", "Default", "Your original commands", null, null));
-    state.write("workspaces.json", workspaces.values());
+    state.writeConfig("workspaces", workspaces.values());
   }
 
   public synchronized List<Workspace> list() {
@@ -56,7 +56,7 @@ public class WorkspaceService {
   }
 
   private void persist(Map<String, Workspace> next) {
-    state.write("workspaces.json", next.values());
+    state.writeConfig("workspaces", next.values());
     workspaces.clear();
     workspaces.putAll(next);
     logs.append("workspaces", null, null, null, null, null, list());

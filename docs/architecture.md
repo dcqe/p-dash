@@ -20,7 +20,7 @@ There is no Node backend, CLI process owner, MCP stdio adapter, or HTTP hop betw
 src/main/java/com/example/dash/
   DashApplication.java       lifecycle, browser launch, runner ownership
   config/                    private local state I/O
-  process/                   config, registry, lifecycle, workspaces, migration
+  process/                   config, registry, lifecycle and workspaces
   log/                       bounded history, replay, subscriptions, regex waits
   terminal/                  native terminal sessions and authenticated WebSocket
   security/                  local bearer tokens and one-use connection tickets
@@ -59,9 +59,9 @@ ProcessManager tracks readiness independently from OS aliveness. Each run has a 
 
 ## Workspaces
 
-WorkspaceService persists a catalog in workspaces.json. Each ProcessConfig carries an immutable workspaceId, defaulting to `default` for older definitions. The process registry, lifecycle history, and bounded event log remain owned by one server; IDs are globally unique. Creation validates the workspace and deletion permits only empty, non-default workspaces. Settings changes publish sequenced `workspaces` events, with the catalog included in WebSocket snapshots. Workspace locks protect creation/deletion races.
+WorkspaceService persists the workspace catalog in the workspaces section of config.json; ProcessRegistry saves definitions in its commands section. LocalState serializes section updates to preserve the other sections and atomically replaces the document. LocalState validates the complete catalog before saving or archiving legacy inputs at startup. Runtime lifecycle and logs remain separate from editable configuration. Each ProcessConfig carries an immutable workspaceId, defaulting to `default` for older definitions. The process registry, lifecycle history, and bounded event log remain owned by one server; IDs are globally unique. Creation validates the workspace and deletion permits only empty, non-default workspaces. Settings changes publish sequenced `workspaces` events, with the catalog included in WebSocket snapshots. Workspace locks protect creation/deletion races.
 
-The browser filters commands and events by workspace and remounts the view on switching, preventing terminal/input state from crossing workspaces. View preferences live under separate browser-storage keys. A combined-source selection is a view preference, never an execution group. REST/MCP intentionally retain server-wide discovery for agents; workspaces are not authorization boundaries. Legacy group files are ignored without modifying them.
+The browser filters commands and events by workspace and remounts the view on switching, preventing terminal/input state from crossing workspaces. View preferences live under separate browser-storage keys. A combined-source selection is a view preference, never an execution group. REST/MCP intentionally retain server-wide discovery for agents; workspaces are not authorization boundaries. Legacy group files are archived under backups/ and ignored.
 
 Flex layout allocates remaining viewport height to the terminal; ResizeObserver fits xterm and resizes the selected PTY after card reflow. Command cards scroll when needed, and the terminal retains a minimum usable height.
 

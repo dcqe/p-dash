@@ -19,7 +19,7 @@ public class LocalAccess {
   @PostConstruct
   void init() {
     try {
-      var path = state.file("token");
+      var path = state.file("auth/token");
       if (Files.exists(path)) token = Files.readString(path).trim();
       else {
         byte[] bytes = new byte[32];

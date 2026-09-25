@@ -51,8 +51,14 @@ export default function WorkspaceDialog({ workspace, cwd, empty, onClose, onSave
     }
   }
   return (
-    <div className="overlay">
-      <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="workspace-title">
+    <div className="overlay" onClick={() => !busy && onClose()}>
+      <section
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="workspace-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="dialog-title">
           <div>
             <span className="eyebrow">YOUR WORKSPACE</span>
@@ -83,7 +89,16 @@ export default function WorkspaceDialog({ workspace, cwd, empty, onClose, onSave
           </label>
           <label>
             Accent color
-            <input type="color" {...field('color')} />
+            <span className="color-picker-field">
+              <input
+                className="color-picker"
+                type="color"
+                aria-label="Choose accent color"
+                value={form.color || '#5B8FF9'}
+                onChange={(e) => setForm({ ...form, color: e.target.value })}
+              />
+              <code className="color-value">{(form.color || '#5B8FF9').toUpperCase()}</code>
+            </span>
           </label>
           <label>
             Default working directory
@@ -100,24 +115,34 @@ export default function WorkspaceDialog({ workspace, cwd, empty, onClose, onSave
           )}
           {workspace && workspace.id !== 'default' && (
             <div className="workspace-delete">
-              <button
-                type="button"
-                className="text-button"
-                disabled={busy || !empty}
-                onClick={() => setConfirmDelete(true)}
-              >
-                Delete workspace
-              </button>
-              {!empty && (
-                <p className="muted">Remove its commands first to delete this workspace.</p>
-              )}
-              {confirmDelete && (
-                <p className="muted">
-                  Delete this empty workspace?{' '}
-                  <button type="button" className="danger" disabled={busy} onClick={remove}>
-                    Confirm deletion
-                  </button>
+              <div className="workspace-delete-copy">
+                <strong>Delete workspace</strong>
+                <p>
+                  Permanently remove this workspace and its settings. Commands must be removed
+                  first.
                 </p>
+              </div>
+              {!confirmDelete ? (
+                <button
+                  type="button"
+                  className="danger-outline"
+                  disabled={busy || !empty}
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  Delete workspace
+                </button>
+              ) : (
+                <div className="workspace-delete-confirm">
+                  <span>Are you sure? This cannot be undone.</span>
+                  <div>
+                    <button type="button" disabled={busy} onClick={() => setConfirmDelete(false)}>
+                      Cancel
+                    </button>
+                    <button type="button" className="danger" disabled={busy} onClick={remove}>
+                      {busy ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )}

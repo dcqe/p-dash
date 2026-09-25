@@ -25,7 +25,7 @@ public class LogService {
 
   @PostConstruct
   void load() {
-    var saved = state.read("logs.json", Saved.class, new Saved(0, List.of()));
+    var saved = state.read("logs/output.json", Saved.class, new Saved(0, List.of()));
     sequence = saved.sequence();
     saved.entries().forEach(buffer::append);
     saver =
@@ -141,7 +141,7 @@ public class LogService {
 
   public synchronized void flush() {
     if (dirty) {
-      state.write("logs.json", new Saved(sequence, buffer.entries()));
+      state.write("logs/output.json", new Saved(sequence, buffer.entries()));
       dirty = false;
     }
   }

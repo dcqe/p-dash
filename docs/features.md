@@ -7,7 +7,7 @@ This is the inventory of implemented user-facing behavior. Keep it current whene
 - Switch from the workspace selector in the sidebar, including on narrow screens. Each workspace has its own command definitions, lifecycle display, output view, terminal tabs, and batch controls.
 - **New** creates an empty workspace. **Settings** changes its name, description, accent color, and default working directory. New commands start with that directory in their editor; existing command directories do not change.
 - Workspace settings and each command's workspace assignment persist on the server. Existing definitions without an assignment belong to **Default**, preserving IDs, environment overrides, lifecycle history, and retained output.
-- The chosen workspace, selected terminal tab, text filter, display pause, and combined-stream source selection persist separately per workspace in this browser. A new browser starts with default view settings. If browser storage is unavailable, views still work for the current session.
+- On each application launch, the first workspace listed by the server configuration opens. The selected terminal tab, text filter, display pause, and combined-stream source selection persist separately per workspace in this browser. If browser storage is unavailable, views still work for the current session.
 - Switching never starts or stops a process. Commands in other workspaces continue running. Start/stop/restart all acts only on the displayed workspace; errors are reported per command.
 - Delete an empty workspace from Settings with confirmation. Default cannot be deleted. Remove stopped commands first. Commands cannot be reassigned to another workspace; create a new definition there instead.
 - Workspaces are organizational boundaries on a trusted local server, not access-control tenants. REST/MCP status exposes all workspaces and process IDs; log retention remains bounded across the server.
@@ -15,7 +15,7 @@ This is the inventory of implemented user-facing behavior. Keep it current whene
 ## Commands and lifecycle
 
 - **Add command** defines a name, one executable/argument per line, existing absolute directory, optional environment overrides, identity color, and PTY or pipe mode. Shell syntax requires an explicit shell.
-- Colors are generated from stable command IDs when omitted, and appear on cards and combined source labels. Existing custom colors are preserved during migration.
+- Colors are generated from stable command IDs when omitted, and appear on cards and combined source labels.
 - Each card opens its terminal and provides start, stop, restart, and edit controls. Stop before editing or deleting a definition. REST partial edits preserve omitted environment overrides; MCP full updates must supply them.
 - Start, restart, and stop all controls operate on the current workspace's commands concurrently, without dependency ordering.
 - Cards distinguish never started, starting, running, stopping, stopped, exited, and failed states, with PID, elapsed time, or exit information. Green terminal dots mean OS liveness, not application health.
@@ -40,4 +40,12 @@ This is the inventory of implemented user-facing behavior. Keep it current whene
 - First startup seeds Healthy, Flaky, and Chatty Java command definitions in Default; none starts automatically. Demo seeding can be disabled. YAML files can seed additional IDs; saved definitions take precedence.
 - Local bearer authentication protects REST and embedded Streamable HTTP MCP. Host/Origin checks and short-lived, single-use terminal tickets protect browser access. Environment values are excluded from status responses.
 - MCP and REST share the same services for workspace settings, process definitions, lifecycle, explicit terminal input/resize, incremental logs, regex search, bounded log/readiness waits, and process-exit waits. See [API contract](api.md) and [agent setup](agent-setup.md).
-- Legacy user definitions are imported with explicit shell invocation. Original legacy files remain for rollback. Command groups have been removed from the UI, services, REST, MCP, and events; old group files are left untouched and ignored.
+- Command groups have been removed from the UI, services, REST, MCP, and events; old group files are preserved under `backups/` and ignored.
+
+## Configuration and storage
+
+- Edit .pdash/config.json while the app is stopped: it contains version, settings, workspaces, and commands. UI and API changes save to that same file. Restart to apply file edits; there is no live file reload.
+- Launcher settings control port and browser launch; demoEnabled controls seeding. Environment/CLI overrides remain available. See [configuration](configuration.md) for the full format and direct-Java limitations.
+- Logs live in logs/, credentials in auth/, lifecycle and legacy PID files in runtime/, optional YAML seeds in imports/processes/, and migration originals in backups/. The root owner.lock remains for compatibility with older servers. Unknown files are left alone.
+- Startup migrates the old flat layout without changing saved definitions or the bearer token. Invalid config, duplicate IDs, and missing workspace references prevent startup without replacing the config. Existing config wins over legacy definitions; backups retain conflicting legacy files.
+- The launcher serves a built frontend. Its -Dev mode reloads Java only; use npm run dev in frontend/ separately for Vite hot reload.
