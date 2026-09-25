@@ -8,5 +8,6 @@ playwright-report/
 .npm-cache/
 target/
 .tools/
+.idea/
 frontend/dist/
 frontend/node_modules/
