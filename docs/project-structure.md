@@ -15,7 +15,7 @@ p-dash/
 │   │   │   ├── demo/                        Standalone demo child processes
 │   │   │   ├── log/                         Bounded output, replay and waits
 │   │   │   ├── mcp/                         Embedded MCP configuration, tools and DTOs
-│   │   │   ├── process/                     Definitions, registry, lifecycle and groups
+│   │   │   ├── process/                     Definitions, registry, lifecycle and workspaces
 │   │   │   ├── security/                    Local token, host/origin checks and tickets
 │   │   │   └── terminal/                    PTY/pipe sessions and terminal WebSocket
 │   │   └── resources/
@@ -31,14 +31,14 @@ p-dash/
 │   ├── src/
 │   │   ├── main.jsx, App.jsx                 Application bootstrap and layout
 │   │   ├── api/                              REST client and reconnecting stream
-│   │   ├── agent/                            Embedded MCP connection instructions
-│   │   ├── process/                          Command and group dialogs
+│   │   ├── process/                          Command and workspace dialogs
 │   │   ├── terminal/                         xterm and merged output parser
 │   │   ├── style.css                         Neutral dashboard styling
 │   │   └── ui.js                             Shared display helpers and colors
-│   └── test/combined.test.js                Merged ANSI stream test
+│   └── test/                               Merged ANSI stream and workspace-view tests
 ├── docs/
 │   ├── architecture.md                      Design and ownership decisions
+│   ├── features.md                          User-facing feature inventory
 │   ├── api.md                                REST, MCP and WebSocket contract
 │   └── project-structure.md                 This directory guide
 ├── AGENTS.md                                Agent operating instructions
@@ -49,7 +49,7 @@ p-dash/
 
 These directories are created or used locally and are ignored by Git:
 
-- `.pdash/` stores command definitions, groups, bounded logs, token and migration state.
+- `.pdash/` stores command definitions, workspaces, bounded logs, token and migration state.
 - `.tools/` contains the portable JDK/Maven tools used on this workstation.
 - `target/` contains Maven and Quarkus build output.
 - `frontend/node_modules/` contains browser build dependencies.

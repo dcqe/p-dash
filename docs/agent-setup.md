@@ -17,7 +17,7 @@ The MCP endpoint is `http://127.0.0.1:4310/mcp`. Read the bearer token from `.pd
 }
 ```
 
-Agents can manage definitions and groups, start, stop, and restart processes, read incremental output, search logs, wait for readiness or exit, send terminal input, and resize PTYs. These operations use the same process manager as the browser.
+Agents can manage definitions and workspaces, start, stop, and restart processes, read incremental output, search logs, wait for readiness or exit, send terminal input, and resize PTYs. These operations use the same process manager as the browser.
 
 ## REST and CLI
 

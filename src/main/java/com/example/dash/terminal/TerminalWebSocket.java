@@ -17,7 +17,7 @@ public class TerminalWebSocket {
   @Inject LocalAccess access;
   @Inject LogService logs;
   @Inject ProcessManager manager;
-  @Inject GroupService groups;
+  @Inject WorkspaceService workspaces;
   @Inject ObjectMapper mapper;
   private final Map<String, Client> clients = new ConcurrentHashMap<>();
 
@@ -45,7 +45,7 @@ public class TerminalWebSocket {
     if (!body.path("type").asText().equals("subscribe") || client.subscription != null) return;
     long stateCursor = logs.cursor();
     var commands = manager.list();
-    var groupList = groups.list();
+    var workspaceList = workspaces.list();
     client.subscription =
         logs.subscribe(
             body.path("after").asLong(0),
@@ -66,8 +66,8 @@ public class TerminalWebSocket {
                         page.truncated(),
                         "commands",
                         commands,
-                        "groups",
-                        groupList)),
+                        "workspaces",
+                        workspaceList)),
             client::send);
   }
 

@@ -11,6 +11,7 @@ import java.util.*;
 @ApplicationScoped
 public class ProcessManager {
   @Inject ProcessRegistry registry;
+  @Inject WorkspaceService workspaces;
   @Inject TerminalService terminals;
   @Inject LogService logs;
   private volatile boolean closing;
@@ -28,7 +29,10 @@ public class ProcessManager {
   }
 
   public ProcessSnapshot create(ProcessConfig config) {
-    registry.add(config);
+    synchronized (workspaces) {
+      workspaces.get(config.workspaceId());
+      registry.add(config);
+    }
     return changed(registry.get(config.id()));
   }
 
@@ -37,6 +41,10 @@ public class ProcessManager {
     synchronized (p) {
       ensureStopped(p);
       if (!id.equals(config.id())) throw new IllegalArgumentException("ID cannot change");
+      if (!p.config.workspaceId().equals(config.workspaceId()))
+        throw new IllegalArgumentException(
+            "A command cannot move between workspaces; create a new definition instead");
+      workspaces.get(config.workspaceId());
       p.config = config;
       registry.save();
       return changed(p);
@@ -88,7 +96,8 @@ public class ProcessManager {
                       p.endedAt = Instant.now().toString();
                       p.terminal = null;
                       p.status = code == 0 ? ProcessStatus.EXITED : ProcessStatus.FAILED;
-                      p.error = code == 0 ? null : "Process exited unexpectedly (exit code " + code + ")";
+                      p.error =
+                          code == 0 ? null : "Process exited unexpectedly (exit code " + code + ")";
                       changed(p);
                     }
                   } catch (Exception e) {

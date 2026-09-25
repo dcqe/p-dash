@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ChevronRight,
   Download,
@@ -17,33 +17,68 @@ import {
 } from 'lucide-react';
 import { api } from './api/client.js';
 import { useDashboard } from './api/useDashboard.js';
-import { palette, active, ago, plain, statusLabel } from './ui.js';
+import { active, ago, plain, statusLabel } from './ui.js';
 import TerminalPane from './terminal/TerminalPane.jsx';
 import CommandDialog from './process/CommandDialog.jsx';
-import GroupDialog from './process/GroupDialog.jsx';
+import WorkspaceDialog from './process/WorkspaceDialog.jsx';
+import {
+  readView,
+  remember,
+  lastWorkspace,
+  workspaceCommands,
+  streamCommands,
+} from './workspace.js';
 export default function App() {
-  const [selected, setSelected] = useState('all');
-  const [tab, setTab] = useState('combined');
-
-  const [query, setQuery] = useState('');
-  const [paused, setPaused] = useState(false);
-  const [dialog, setDialog] = useState(null);
   const [toast, setToast] = useState(null);
+  const dashboard = useDashboard(setToast);
+  const [selected, setSelected] = useState(lastWorkspace);
+  const workspace = dashboard.workspaces.find((w) => w.id === selected) || dashboard.workspaces[0];
+  useEffect(() => {
+    if (workspace) remember('pdash.workspace', workspace.id);
+  }, [workspace?.id]);
+  if (!workspace)
+    return (
+      <div className="loading-state" role="status">
+        Connecting to your workspaces…
+      </div>
+    );
+  return (
+    <WorkspaceDashboard
+      key={workspace.id}
+      dashboard={dashboard}
+      workspace={workspace}
+      onSwitch={setSelected}
+      toast={toast}
+      setToast={setToast}
+    />
+  );
+}
+function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast }) {
+  const [saved] = useState(() => readView(workspace.id));
+  const [tab, setTab] = useState(saved.tab);
+  const [query, setQuery] = useState(saved.query);
+  const [paused, setPaused] = useState(saved.paused);
+  const [sources, setSources] = useState(saved.sources);
+  const [dialog, setDialog] = useState(null);
   const [busy, setBusy] = useState(new Set());
-
-  const scrollArea = useRef();
-  const { commands, groups, events, connection, cwd } = useDashboard(setToast);
+  const { connection, workspaces } = dashboard;
+  const commands = workspaceCommands(dashboard.commands, workspace.id);
+  const visible = commands;
+  const merged = streamCommands(commands, sources);
+  const events = dashboard.events.filter((e) => commands.some((c) => c.id === e.processId));
+  const cwd = workspace.workingDirectory;
+  useEffect(() => {
+    remember(`pdash.view.${workspace.id}`, { tab, query, paused, sources });
+  }, [tab, query, paused, sources, workspace.id]);
   const fail = (e) => setToast(e.message || String(e));
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 6000);
     return () => clearTimeout(t);
   }, [toast]);
-  const group = groups.find((g) => g.id === selected);
-  const visible = group ? commands.filter((c) => group.processIds.includes(c.id)) : commands;
   useEffect(() => {
     if (tab !== 'combined' && !visible.some((c) => c.id === tab)) setTab('combined');
-  }, [selected, commands]);
+  }, [tab, commands]);
   async function action(id, type) {
     setBusy((b) => new Set([...b, id]));
     try {
@@ -71,7 +106,7 @@ export default function App() {
         (e) =>
           e.type === 'output' &&
           visible.some((c) => c.id === e.processId) &&
-          (tab === 'combined' || tab === e.processId),
+          (tab === 'combined' ? merged.some((c) => c.id === e.processId) : tab === e.processId),
       )
       .map(
         (e) => `[${e.time}] [${commands.find((c) => c.id === e.processId)?.name}] ${plain(e.data)}`,
@@ -93,59 +128,52 @@ export default function App() {
           </span>
           p-dash
         </a>
-        <div className="workspace">
-          <span className="workspace-avatar">W</span>
-          <div>
-            <strong>Project</strong>
-            <small>Development</small>
+        <div className="workspace-switcher" style={{ '--workspace-accent': workspace.color }}>
+          <label htmlFor="workspace-select" className="section-label">
+            WORKSPACE
+          </label>
+          <div className="workspace-choice">
+            <span className="workspace-avatar">{workspace.name.slice(0, 1).toUpperCase()}</span>
+            <select
+              id="workspace-select"
+              value={workspace.id}
+              onChange={(e) => onSwitch(e.target.value)}
+            >
+              {workspaces.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
           </div>
-          <span className="workspace-dot" />
+          <p className="workspace-description">
+            {workspace.description || 'Your commands, your space.'}
+          </p>
+          <div className="workspace-actions">
+            <button
+              className="text-button"
+              onClick={() => setDialog({ type: 'workspace', workspace })}
+            >
+              <Pencil size={13} />
+              Settings
+            </button>
+            <button className="text-button" onClick={() => setDialog({ type: 'workspace' })}>
+              <Plus size={13} />
+              New
+            </button>
+          </div>
         </div>
-        <span className="section-label">PROJECT</span>
-        <button
-          className={`nav-item ${selected === 'all' ? 'selected' : ''}`}
-          onClick={() => {
-            setSelected('all');
-          }}
-        >
+        <button className="nav-item selected" onClick={() => setTab('combined')}>
           <Layers size={17} />
           All commands<span>{commands.length}</span>
         </button>
-        <div className="section-row">
-          <span className="section-label">COMMAND GROUPS</span>
-          <button
-            className="icon"
-            aria-label="Create group"
-            onClick={() => setDialog({ type: 'group' })}
-          >
-            <Plus size={15} />
-          </button>
-        </div>
-        {groups.map((g, i) => (
-          <button
-            key={g.id}
-            className={`nav-item ${selected === g.id ? 'selected' : ''}`}
-            onClick={() => {
-              setSelected(g.id);
-              setTab('combined');
-            }}
-          >
-            <Folder size={16} style={{ color: palette[i % palette.length] }} />
-            {g.name}
-            <span>{g.processIds.length}</span>
-          </button>
-        ))}
-        {!groups.length && (
-          <p className="sidebar-hint">
-            Keep services together.
-            <br />
-            Create your first group.
-          </p>
-        )}
-        <button className="new-group" onClick={() => setDialog({ type: 'group' })}>
-          <Plus size={14} />
-          New group
+        <button className="nav-item" onClick={() => setDialog({ type: 'command' })}>
+          <Plus size={17} />
+          Add command
         </button>
+        <p className="sidebar-hint">
+          {commands.filter((c) => c.alive).length} active in this workspace
+        </p>
         <div className="sidebar-bottom">
           <div className="local-status">
             <span className={`dot ${connection === 'live' ? 'running' : ''}`} />
@@ -165,253 +193,271 @@ export default function App() {
       <main>
         <header className="topbar">
           <div>
-            <span>Project</span>
+            <span>{workspace.name}</span>
             <ChevronRight size={13} />
-            <strong>{group?.name || 'All commands'}</strong>
+            <strong>All commands</strong>
           </div>
           <span className="host-label">
             <Radio size={13} />
             127.0.0.1
           </span>
         </header>
-            <section className="page-heading">
-              <div className="heading-actions">
-                {group && (
-                  <button
-                    className="icon"
-                    title="Edit group"
-                    onClick={() => setDialog({ type: 'group', group })}
-                  >
-                    <Pencil size={17} />
-                  </button>
-                )}
-              </div>
-            </section>
-            <section className="process-section">
-              <div className="section-toolbar">
-                <div>
-                  <h2>Commands</h2>
-                  <span className="count">{visible.length}</span>
-                </div>
-                <div>
-                  <button
-                    className="text-button"
-                    disabled={!visible.length || connection !== 'live'}
-                    onClick={() => batch('start')}
-                  >
-                    <Play size={13} />
-                    Start all
-                  </button>
-                  <button
-                    className="text-button"
-                    disabled={
-                      !visible.length ||
-                      connection !== 'live' ||
-                      visible.some((c) => busy.has(c.id))
-                    }
-                    onClick={() => batch('restart')}
-                  >
-                    <RotateCcw size={13} />
-                    Restart all
-                  </button>
-                  <span className="divider" />
-                  <button
-                    className="text-button"
-                    disabled={!visible.some(active)}
-                    onClick={() => batch('stop')}
-                  >
-                    <Square size={12} />
-                    Stop all
-                  </button>
-                </div>
-              </div>
-              <div className="command-grid">
-                {visible.map((c) => (
-                  <article
-                    key={c.id}
-                    className={`command-card ${tab === c.id ? 'focused' : ''}`}
-                    style={{ '--accent': c.color }}
-                  >
-                    <div className="card-top">
-                      <button className="command-name" onClick={() => setTab(c.id)}>
-                        <span className="process-symbol">
-                          <TerminalSquare size={16} />
-                        </span>
-                        <strong>{c.name}</strong>
-                      </button>
-                      <span className={`status ${c.status}`}>
-                        <span className={`dot ${c.status}`} />
-                        {statusLabel(c.status)}
-                      </span>
-                    </div>
-                    <code title={c.command.join(' ')}>{c.command.join(' ')}</code>
-                    <div className="card-path" title={c.cwd}>
-                      <Folder size={12} />
-                      {c.cwd.replaceAll('\\', '/').split('/').filter(Boolean).slice(-2).join('/')}
-                    </div>
-                    <div className="card-bottom">
-                      <span className="runtime">
-                        {active(c) ? (
-                          <>
-                            <span className="pulse-bars">▂▅▃▆▂</span>
-                            {ago(c.startedAt)}
-                            <span className="pid">PID {c.pid}</span>
-                          </>
-                        ) : c.exitCode != null ? (
-                          `Exit ${c.exitCode} · ${ago(c.endedAt)} ago`
-                        ) : (
-                          'Ready to start'
-                        )}
-                      </span>
-                      <div className="card-actions">
-                        <button
-                          className="icon"
-                          disabled={busy.has(c.id) || active(c)}
-                          title="Edit command"
-                          aria-label={`Edit ${c.name}`}
-                          onClick={() => setDialog({ type: 'command', command: c })}
-                        >
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          className="icon"
-                          disabled={busy.has(c.id)}
-                          aria-label={`Restart ${c.name}`}
-                          onClick={() => action(c.id, 'restart')}
-                        >
-                          <RotateCcw size={14} />
-                        </button>
-                        <button
-                          className={`icon ${active(c) ? 'stop' : 'play'}`}
-                          disabled={busy.has(c.id) || connection !== 'live'}
-                          aria-label={`${active(c) ? 'Stop' : 'Start'} ${c.name}`}
-                          onClick={() => action(c.id, active(c) ? 'stop' : 'start')}
-                        >
-                          {active(c) ? <Square size={13} /> : <Play size={14} />}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-                {!visible.length && (
-                  <button className="empty-card" onClick={() => setDialog({ type: 'command' })}>
-                    <span>
-                      <Plus size={24} />
+        <section className="process-section">
+          <div className="section-toolbar">
+            <div>
+              <h2>Commands</h2>
+              <span className="count">{visible.length}</span>
+            </div>
+            <div>
+              <button
+                className="text-button"
+                disabled={!visible.length || connection !== 'live'}
+                onClick={() => batch('start')}
+              >
+                <Play size={13} />
+                Start all
+              </button>
+              <button
+                className="text-button"
+                disabled={
+                  !visible.length || connection !== 'live' || visible.some((c) => busy.has(c.id))
+                }
+                onClick={() => batch('restart')}
+              >
+                <RotateCcw size={13} />
+                Restart all
+              </button>
+              <span className="divider" />
+              <button
+                className="text-button"
+                disabled={!visible.some(active)}
+                onClick={() => batch('stop')}
+              >
+                <Square size={12} />
+                Stop all
+              </button>
+            </div>
+          </div>
+          <div className="command-grid">
+            {visible.map((c) => (
+              <article
+                key={c.id}
+                className={`command-card ${tab === c.id ? 'focused' : ''}`}
+                style={{ '--accent': c.color }}
+              >
+                <div className="card-top">
+                  <button className="command-name" onClick={() => setTab(c.id)}>
+                    <span className="process-symbol">
+                      <TerminalSquare size={16} />
                     </span>
-                    <strong>Your next command lives here.</strong>
-                    <small>Add a dev server, worker, or anything that keeps running.</small>
+                    <strong>{c.name}</strong>
                   </button>
-                )}
-              </div>
-            </section>
-            <section className="terminal-section">
-              <div className="terminal-top">
-                <div className="terminal-tabs">
+                  <span className={`status ${c.status}`}>
+                    <span className={`dot ${c.status}`} />
+                    {statusLabel(c.status)}
+                  </span>
+                </div>
+                <code title={c.command.join(' ')}>{c.command.join(' ')}</code>
+                <div className="card-path" title={c.cwd}>
+                  <Folder size={12} />
+                  {c.cwd.replaceAll('\\', '/').split('/').filter(Boolean).slice(-2).join('/')}
+                </div>
+                <div className="card-bottom">
+                  <span className="runtime">
+                    {active(c) ? (
+                      <>
+                        <span className="pulse-bars">▂▅▃▆▂</span>
+                        {ago(c.startedAt)}
+                        <span className="pid">PID {c.pid}</span>
+                      </>
+                    ) : c.exitCode != null ? (
+                      `Exit ${c.exitCode} · ${ago(c.endedAt)} ago`
+                    ) : (
+                      'Ready to start'
+                    )}
+                  </span>
+                  <div className="card-actions">
+                    <button
+                      className="icon"
+                      disabled={busy.has(c.id) || active(c)}
+                      title="Edit command"
+                      aria-label={`Edit ${c.name}`}
+                      onClick={() => setDialog({ type: 'command', command: c })}
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      className="icon"
+                      disabled={busy.has(c.id)}
+                      aria-label={`Restart ${c.name}`}
+                      onClick={() => action(c.id, 'restart')}
+                    >
+                      <RotateCcw size={14} />
+                    </button>
+                    <button
+                      className={`icon ${active(c) ? 'stop' : 'play'}`}
+                      disabled={busy.has(c.id) || connection !== 'live'}
+                      aria-label={`${active(c) ? 'Stop' : 'Start'} ${c.name}`}
+                      onClick={() => action(c.id, active(c) ? 'stop' : 'start')}
+                    >
+                      {active(c) ? <Square size={13} /> : <Play size={14} />}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+            {!visible.length && (
+              <button className="empty-card" onClick={() => setDialog({ type: 'command' })}>
+                <span>
+                  <Plus size={24} />
+                </span>
+                <strong>Your next command lives here.</strong>
+                <small>Add a dev server, worker, or anything that keeps running.</small>
+              </button>
+            )}
+          </div>
+        </section>
+        <section className="terminal-section">
+          <div className="terminal-top">
+            <div className="terminal-tabs">
+              <button
+                className={tab === 'combined' ? 'active' : ''}
+                onClick={() => setTab('combined')}
+              >
+                <Layers size={14} />
+                Combined stream<span>{merged.length}</span>
+              </button>
+              {visible.map((c) => (
+                <button
+                  key={c.id}
+                  className={tab === c.id ? 'active' : ''}
+                  onClick={() => setTab(c.id)}
+                >
+                  <span
+                    className={`dot process-aliveness ${c.alive ? 'alive' : 'not-alive'}`}
+                    role="img"
+                    aria-label={`${c.name}: ${c.alive ? 'process alive' : 'no live process'}`}
+                    title={
+                      c.alive
+                        ? 'Process alive (readiness is shown on the command card)'
+                        : 'No live process'
+                    }
+                  />
+                  {c.name}
+                </button>
+              ))}
+            </div>
+            <div className="terminal-tools">
+              <button
+                className="icon"
+                aria-label="Download output"
+                title="Download output"
+                onClick={download}
+              >
+                <Download size={15} />
+              </button>
+            </div>
+          </div>
+          <div className="terminal-filter">
+            <div className="source-legend">
+              {tab === 'combined' ? (
+                <>
                   <button
-                    className={tab === 'combined' ? 'active' : ''}
-                    onClick={() => setTab('combined')}
+                    className="source-chip"
+                    aria-pressed={sources === null}
+                    onClick={() => setSources(null)}
                   >
-                    <Layers size={14} />
-                    Combined stream<span>{visible.length}</span>
+                    All
+                  </button>
+                  <button
+                    className="source-chip"
+                    onClick={() => setSources(commands.filter((c) => c.alive).map((c) => c.id))}
+                  >
+                    Active now
+                  </button>
+                  <button className="source-chip" onClick={() => setSources([])}>
+                    None
                   </button>
                   {visible.map((c) => (
                     <button
                       key={c.id}
-                      className={tab === c.id ? 'active' : ''}
-                      onClick={() => setTab(c.id)}
+                      className={`source-chip ${merged.some((m) => m.id === c.id) ? 'included' : ''}`}
+                      aria-pressed={merged.some((m) => m.id === c.id)}
+                      title={`Include ${c.name} in combined stream`}
+                      onClick={() =>
+                        setSources((prev) => {
+                          const ids = prev === null ? commands.map((c) => c.id) : prev;
+                          return ids.includes(c.id)
+                            ? ids.filter((id) => id !== c.id)
+                            : [...ids, c.id];
+                        })
+                      }
                     >
+                      <i style={{ background: c.color }} />
+                      {c.name}
                       <span
                         className={`dot process-aliveness ${c.alive ? 'alive' : 'not-alive'}`}
-                        role="img"
-                        aria-label={`${c.name}: ${c.alive ? 'process alive' : 'no live process'}`}
-                        title={
-                          c.alive
-                            ? 'Process alive (readiness is shown on the command card)'
-                            : 'No live process'
-                        }
                       />
-                      {c.name}
                     </button>
                   ))}
-                </div>
-                <div className="terminal-tools">
-                  <button
-                    className="icon"
-                    aria-label="Download output"
-                    title="Download output"
-                    onClick={download}
-                  >
-                    <Download size={15} />
-                  </button>
-                </div>
-              </div>
-              <div className="terminal-filter">
-                <div className="source-legend">
-                  {tab === 'combined' ? (
-                    visible.map((c) => (
-                      <span key={c.id}>
-                        <i style={{ background: c.color }} />
-                        {c.name}
-                      </span>
-                    ))
-                  ) : (
-                    <span>
-                      Interactive PTY · keyboard input goes to{' '}
-                      {commands.find((c) => c.id === tab)?.name}
-                    </span>
-                  )}
-                </div>
-                <div className="filter-actions">
-                  {tab === 'combined' && (
-                    <label className="search">
-                      <Search size={13} />
-                      <input
-                        aria-label="Filter combined output"
-                        placeholder="Filter output…"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                      />
-                    </label>
-                  )}
-                  <button
-                    className={`text-button ${paused ? 'paused' : ''}`}
-                    onClick={() => setPaused(!paused)}
-                  >
-                    {paused ? <Play size={12} /> : <Pause size={12} />}{' '}
-                    {paused ? 'Resume' : 'Pause'}
-                  </button>
-                </div>
-              </div>
-              <div className="terminal-body" ref={scrollArea}>
-                <TerminalPane
-                  key={`${selected}:${tab}`}
-                  events={events}
-                  commands={visible}
-                  processId={tab === 'combined' ? null : tab}
-                  query={query}
-                  paused={paused}
-                  onError={fail}
-                />
-              </div>
-              <div className="terminal-bottom">
+                  {!merged.length && <span>Select commands to combine their output.</span>}
+                </>
+              ) : (
                 <span>
-                  <span className={`dot ${connection === 'live' && !paused ? 'running' : ''}`} />
-                  {paused
-                    ? 'Display paused · output still captured'
-                    : connection === 'live'
-                      ? 'Streaming live'
-                      : 'Reconnecting to server'}
-                  <span className="terminal-meta">
-                    {tab === 'combined' ? 'Merged output · read only' : 'Interactive terminal'}
-                  </span>
+                  Interactive PTY · keyboard input goes to{' '}
+                  {commands.find((c) => c.id === tab)?.name}
                 </span>
-                <span>
-                  {events.filter((e) => e.type === 'output').length.toLocaleString()} output chunks
-                  <span className="terminal-meta">UTF-8</span>
-                </span>
-              </div>
-            </section>
-            <div className="terminal-spacer" aria-hidden="true" />
+              )}
+            </div>
+            <div className="filter-actions">
+              {tab === 'combined' && (
+                <label className="search">
+                  <Search size={13} />
+                  <input
+                    aria-label="Filter combined output"
+                    placeholder="Filter output…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </label>
+              )}
+              <button
+                className={`text-button ${paused ? 'paused' : ''}`}
+                onClick={() => setPaused(!paused)}
+              >
+                {paused ? <Play size={12} /> : <Pause size={12} />} {paused ? 'Resume' : 'Pause'}
+              </button>
+            </div>
+          </div>
+          <div className="terminal-body">
+            <TerminalPane
+              key={tab}
+              events={events}
+              commands={tab === 'combined' ? merged : visible}
+              processId={tab === 'combined' ? null : tab}
+              query={query}
+              paused={paused}
+              onError={fail}
+            />
+          </div>
+          <div className="terminal-bottom">
+            <span>
+              <span className={`dot ${connection === 'live' && !paused ? 'running' : ''}`} />
+              {paused
+                ? 'Display paused · output still captured'
+                : connection === 'live'
+                  ? 'Streaming live'
+                  : 'Reconnecting to server'}
+              <span className="terminal-meta">
+                {tab === 'combined' ? 'Merged output · read only' : 'Interactive terminal'}
+              </span>
+            </span>
+            <span>
+              {events.filter((e) => e.type === 'output').length.toLocaleString()} output chunks
+              <span className="terminal-meta">UTF-8</span>
+            </span>
+          </div>
+        </section>
       </main>
       {toast && (
         <div className="toast" role="status">
@@ -431,34 +477,26 @@ export default function App() {
             api(
               dialog.command ? `/commands/${dialog.command.id}` : '/commands',
               dialog.command ? 'PATCH' : 'POST',
-              body,
+              { ...body, workspaceId: workspace.id },
             )
           }
         />
       )}{' '}
-      {dialog?.type === 'group' && (
-        <GroupDialog
-          commands={commands}
-          group={dialog.group}
+      {dialog?.type === 'workspace' && (
+        <WorkspaceDialog
+          workspace={dialog.workspace}
+          cwd={cwd}
+          empty={!commands.length}
           onClose={() => setDialog(null)}
-          onDelete={async () => {
-            await api(`/groups/${dialog.group.id}`, 'DELETE');
-            setSelected('all');
-          }}
-          onSave={(body) =>
-            api(
-              dialog.group ? `/groups/${dialog.group.id}` : '/groups',
-              dialog.group ? 'PUT' : 'POST',
-              body,
-            )
-          }
+          onSaved={(w) => onSwitch(w.id)}
+          onDeleted={() => onSwitch('default')}
         />
-      )}{' '}
+      )}
       {dialog?.type === 'delete' && (
         <div className="overlay">
           <section className="dialog small" role="dialog" aria-modal="true">
             <h2>Delete {dialog.command.name}?</h2>
-            <p className="muted">This removes its saved definition and group memberships.</p>
+            <p className="muted">This removes its saved command definition.</p>
             <div className="dialog-actions">
               <button onClick={() => setDialog({ type: 'command', command: dialog.command })}>
                 Cancel

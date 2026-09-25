@@ -4,4 +4,4 @@ import com.example.dash.process.*;
 import java.util.List;
 
 public record ProcessStatusResponse(
-    List<ProcessSnapshot> processes, List<ProcessGroup> groups, long cursor) {}
+    List<ProcessSnapshot> processes, List<Workspace> workspaces, long cursor) {}

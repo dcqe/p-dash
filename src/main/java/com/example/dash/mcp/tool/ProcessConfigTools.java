@@ -10,7 +10,6 @@ import java.util.Map;
 @ApplicationScoped
 public class ProcessConfigTools {
   @Inject ProcessManager processes;
-  @Inject GroupService groups;
 
   @Tool(
       name = "create_process",
@@ -30,14 +29,10 @@ public class ProcessConfigTools {
     return processes.update(config.id(), config);
   }
 
-  @Tool(
-      name = "delete_process",
-      description = "Delete a stopped process and remove its group memberships",
-      structuredContent = true)
+  @Tool(name = "delete_process", description = "Delete a stopped process", structuredContent = true)
   @RunOnVirtualThread
   public Map<String, Boolean> delete(String processId) {
     processes.remove(processId);
-    groups.removeMember(processId);
     return Map.of("ok", true);
   }
 }

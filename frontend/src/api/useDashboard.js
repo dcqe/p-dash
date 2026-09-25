@@ -5,7 +5,7 @@ import { retainEvents } from '../ui.js';
 /** One reconnecting WebSocket carries replay + live output. HTTP controls share the same services. */
 export function useDashboard(onMessage) {
   const [commands, setCommands] = useState([]);
-  const [groups, setGroups] = useState([]);
+  const [workspaces, setWorkspaces] = useState([]);
   const [events, setEvents] = useState([]);
   const [connection, setConnection] = useState('connecting');
   const [cwd, setCwd] = useState('');
@@ -22,7 +22,7 @@ export function useDashboard(onMessage) {
             ? prev.map((c) => (c.id === event.processId ? event.process : c))
             : [...prev, event.process],
         );
-      if (event.type === 'groups') setGroups(event.groups);
+      if (event.type === 'workspaces') setWorkspaces(event.workspaces);
       if (event.type === 'removed')
         setCommands((prev) => prev.filter((c) => c.id !== event.processId));
     };
@@ -30,7 +30,7 @@ export function useDashboard(onMessage) {
       if (event.type === 'pong') return;
       if (event.type === 'snapshot') {
         setCommands(event.commands);
-        setGroups(event.groups);
+        setWorkspaces(event.workspaces);
         const reset = event.seq < cursor;
         setEvents((prev) =>
           retainEvents(
@@ -93,5 +93,5 @@ export function useDashboard(onMessage) {
       socket?.close();
     };
   }, []);
-  return { commands, groups, events, connection, cwd };
+  return { commands, workspaces, events, connection, cwd };
 }

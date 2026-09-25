@@ -33,6 +33,7 @@ public final class ManagedProcess {
         exitCode,
         error,
         terminal != null && terminal.alive(),
-        config.readiness());
+        config.readiness(),
+        config.workspaceId());
   }
 }

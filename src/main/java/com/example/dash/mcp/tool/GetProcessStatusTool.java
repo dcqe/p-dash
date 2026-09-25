@@ -10,15 +10,15 @@ import jakarta.inject.Inject;
 @ApplicationScoped
 public class GetProcessStatusTool {
   @Inject ProcessManager processes;
-  @Inject GroupService groups;
+  @Inject WorkspaceService workspaces;
   @Inject LogService logs;
 
   @Tool(
       name = "get_process_status",
-      description = "List saved process definitions, live states, groups and output cursor",
+      description = "List saved process definitions, live states, workspaces and output cursor",
       structuredContent = true)
   @io.smallrye.common.annotation.RunOnVirtualThread
   public ProcessStatusResponse execute() {
-    return new ProcessStatusResponse(processes.list(), groups.list(), logs.cursor());
+    return new ProcessStatusResponse(processes.list(), workspaces.list(), logs.cursor());
   }
 }

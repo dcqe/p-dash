@@ -53,8 +53,10 @@ public class ProcessRegistry {
       p.endedAt = old.endedAt();
       p.exitCode = old.exitCode();
       p.error = old.error();
-      if (p.status == ProcessStatus.FAILED && Objects.equals(p.exitCode, 0)
-          && p.error != null && p.error.contains("exited unexpectedly")) {
+      if (p.status == ProcessStatus.FAILED
+          && Objects.equals(p.exitCode, 0)
+          && p.error != null
+          && p.error.contains("exited unexpectedly")) {
         p.status = ProcessStatus.EXITED;
         p.error = null;
       }
@@ -97,7 +99,8 @@ public class ProcessRegistry {
                   c.env(),
                   color,
                   c.mode(),
-                  c.readiness());
+                  c.readiness(),
+                  c.workspaceId());
             })
         .toArray(ProcessConfig[]::new);
   }

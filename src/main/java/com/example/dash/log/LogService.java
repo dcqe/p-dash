@@ -63,10 +63,18 @@ public class LogService {
       String data,
       String channel,
       Object process,
-      Object groups) {
+      Object workspaces) {
     var entry =
         new LogEntry(
-            ++sequence, Instant.now().toString(), type, id, run, data, channel, process, groups);
+            ++sequence,
+            Instant.now().toString(),
+            type,
+            id,
+            run,
+            data,
+            channel,
+            process,
+            workspaces);
     buffer.append(entry);
     dirty = true;
     stream.publish(entry);
@@ -109,7 +117,7 @@ public class LogService {
                             plain(e.data()),
                             e.stream(),
                             e.process(),
-                            e.groups())
+                            e.workspaces())
                         : e)
             .toList();
     return new LogPage(

@@ -1,5 +1,6 @@
 package com.example.dash.log;
 
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public record LogEntry(
     long seq,
     String time,
@@ -9,4 +10,4 @@ public record LogEntry(
     String data,
     String stream,
     Object process,
-    Object groups) {}
+    Object workspaces) {}

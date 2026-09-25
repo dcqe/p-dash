@@ -12,7 +12,20 @@ public record ProcessConfig(
     Map<String, String> env,
     String color,
     String mode,
-    ReadinessConfig readiness) {
+    ReadinessConfig readiness,
+    String workspaceId) {
+  public ProcessConfig(
+      String id,
+      String name,
+      List<String> command,
+      String workingDirectory,
+      Map<String, String> env,
+      String color,
+      String mode,
+      ReadinessConfig readiness) {
+    this(id, name, command, workingDirectory, env, color, mode, readiness, "default");
+  }
+
   public ProcessConfig(
       String id,
       String name,
@@ -25,6 +38,9 @@ public record ProcessConfig(
   }
 
   public ProcessConfig {
+    workspaceId = workspaceId == null ? "default" : workspaceId;
+    if (!workspaceId.matches("[a-zA-Z0-9_-]{1,80}"))
+      throw new IllegalArgumentException("Invalid workspace ID");
     id = id == null || id.isBlank() ? UUID.randomUUID().toString() : id;
     if (!id.matches("[a-zA-Z0-9_-]{1,80}"))
       throw new IllegalArgumentException("Invalid process ID");

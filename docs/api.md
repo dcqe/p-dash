@@ -23,9 +23,11 @@ Streamable HTTP endpoint: `/mcp`. The server's `tools/list` response is the auth
 
 | Tool                                           | Arguments                                                           |
 | ---------------------------------------------- | ------------------------------------------------------------------- |
+| save_workspace | id (optional), config: name, description, color, workingDirectory |
+| delete_workspace | workspaceId (empty non-default only) |
 | get_process_status                             | none                                                                |
 | start_process / stop_process / restart_process | processId                                                           |
-| create_process / update_process                | config: id, name, command array, workingDirectory, env, color, mode |
+| create_process / update_process                | config: id, name, command array, workingDirectory, env, color, mode, readiness, workspaceId |
 | delete_process                                 | processId                                                           |
 | get_logs                                       | request: processIds array, afterCursor, limit, plain                |
 | wait_for_log / wait_for_ready                  | request: processId, regex, afterCursor, timeoutMs                   |
@@ -33,9 +35,6 @@ Streamable HTTP endpoint: `/mcp`. The server's `tools/list` response is the auth
 | search_logs                                    | processId (optional), regex, afterCursor, limit                     |
 | send_input                                     | processId, data                                                     |
 | resize_terminal                                | processId, cols, rows                                               |
-| save_group                                     | id (optional), name, processIds                                     |
-| delete_group                                   | groupId                                                             |
-| control_group                                  | groupId, action (start/stop/restart)                                |
 
 For example, `tools/call` for readiness uses:
 
@@ -61,25 +60,32 @@ Definitions use argument arrays, never an implicit shell. Set `mode` to `pty` or
 
 | Method         | Path                                                | Body / purpose                                     |
 | -------------- | --------------------------------------------------- | -------------------------------------------------- |
-| GET            | /api/status                                         | server metadata, commands, groups, cursor          |
+| GET            | /api/status                                         | server metadata, commands, workspaces, cursor          |
+| GET / POST | /api/workspaces | list / create workspace settings |
+| PUT / DELETE | /api/workspaces/{id} | replace settings / delete empty non-default workspace |
 | GET / POST     | /api/commands                                       | list / create definition                           |
 | PATCH / DELETE | /api/commands/{id}                                  | partial definition update / delete stopped command |
 | POST           | /api/commands/{id}/start, stop, restart             | lifecycle                                          |
 | POST           | /api/commands/{id}/input                            | data                                               |
 | POST           | /api/commands/{id}/resize                           | cols, rows                                         |
-| GET / POST     | /api/groups                                         | list / create with name, processIds                |
-| PUT / DELETE   | /api/groups/{id}                                    | replace name/members / delete                      |
-| POST           | /api/groups/{id}/start, stop, restart               | per-member outcomes                                |
 | GET            | /api/logs?ids=a,b&after=0&limit=2000&plain=true     | retained events                                    |
 | GET            | /api/logs/search?id=a&regex=ERROR&after=0&limit=100 | regex search                                       |
 | POST           | /api/logs/wait                                      | processId, regex, afterCursor, timeoutMs           |
 | POST           | /api/terminal-ticket                                | single-use 30-second WebSocket ticket              |
 | POST           | /api/shutdown                                       | orderly application and child shutdown             |
 
-Create body: name, command (array), workingDirectory (or cwd), optional env/color/mode. Process snapshots expose cwd and envKeys, never env values. REST partial update preserves omitted fields. Empty env `{}` clears overrides.
+Create body: name, command (array), workingDirectory (or cwd), optional env/color/mode/readiness/workspaceId. Process snapshots expose cwd and envKeys, never env values. REST partial update preserves omitted fields. Empty env `{}` clears overrides.
+
+## Workspace contract
+
+Status and WebSocket snapshots include `workspaces`: an array of `{id, name, description, color, workingDirectory}`. Creation may omit id (generated), description (empty), color (blue), and workingDirectory (server directory). Names must be 1–80 printable characters, descriptions at most 240 characters, colors #rrggbb, and directories existing absolute paths. PUT and `save_workspace` with id replace settings for an existing workspace. Default cannot be deleted; other workspaces must contain no commands to be deleted (409 otherwise).
+
+Process definitions and snapshots include `workspaceId`. Omission at creation maps to `default`; REST PATCH preserves an omitted assignment. An existing process cannot be reassigned (400); create another definition in the target workspace instead. Workspace settings never modify existing command directories. Legacy definitions automatically belong to Default.
+
+REST/MCP discovery and logs remain server-wide. Use returned workspaceId to choose process IDs and pass those IDs to log queries. View switching and combined-source selection are browser preferences, with no lifecycle side effects. Command group endpoints and tools have been removed; legacy group files are ignored.
 
 ## WebSocket
 
-Obtain a ticket with authenticated POST, then connect to `/terminal/{ticket}`. Send `{"type":"subscribe","after":123}`. The first message is a snapshot with commands, groups, events, cursor, seq, stateCursor and truncated, followed by sequenced live events. Event types: output, state, removed, groups. Output fields include processId, runId, stream, time, data. Streams are terminal (PTY) or stdout/stderr (pipes).
+Obtain a ticket with authenticated POST, then connect to `/terminal/{ticket}`. Send `{"type":"subscribe","after":123}`. The first message is a snapshot with commands, workspaces, events, cursor, seq, stateCursor and truncated, followed by sequenced live events. Event types: output, state, removed, workspaces. Output fields include processId, runId, stream, time, data. Streams are terminal (PTY) or stdout/stderr (pipes).
 
 Send `{"type":"ping"}` periodically; the server replies pong. Reconnect with a fresh ticket and the last cursor. After snapshot state, apply its state events newer than stateCursor. Terminal input/resize uses REST with one explicit process ID. Permanent tokens never belong in WebSocket URLs.

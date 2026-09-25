@@ -75,9 +75,14 @@ public class TerminalService {
     var descendants =
         ProcessHandle.of(session.pid()).map(h -> h.descendants().toList()).orElse(List.of());
     if (session.alive()) {
-      try {
-        session.input("\u0003");
-      } catch (IOException ignored) {
+      if (process instanceof com.pty4j.PtyProcess) {
+        try {
+          session.input("\u0003");
+        } catch (IOException ignored) {
+        }
+      } else {
+        // A Ctrl+C byte on a pipe is ordinary input, not an OS interrupt.
+        process.destroy();
       }
       if (!process.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)) {
         if (System.getProperty("os.name").startsWith("Windows")) {

@@ -15,7 +15,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @ApplicationScoped
 public class ProcessConfigLoader {
   @Inject ProcessManager manager;
-  @Inject GroupService groups;
   @Inject LocalState state;
   @Inject ObjectMapper json;
 
@@ -30,9 +29,6 @@ public class ProcessConfigLoader {
           loadYaml(input);
         }
       }
-      if (groups.list().stream().noneMatch(g -> g.id().equals("java-demos")))
-        groups.save(
-            "java-demos", "Java demos", List.of("demo-healthy", "demo-flaky", "demo-chatty"));
     }
     var folder = state.file("processes");
     if (Files.isDirectory(folder))
@@ -117,17 +113,6 @@ public class ProcessConfigLoader {
                 + e.getMessage()
                 + ". Definition remains in state.json");
       }
-    }
-    var imported = manager.list().stream().map(ProcessSnapshot::id).toList();
-    for (var group : old.path("groups")) {
-      var ids = new ArrayList<String>();
-      group
-          .path("processIds")
-          .forEach(
-              id -> {
-                if (imported.contains(id.asText())) ids.add(id.asText());
-              });
-      if (!ids.isEmpty()) groups.save(group.path("id").asText(), group.path("name").asText(), ids);
     }
     state.write("migration-v2.json", Map.of("notes", notes));
   }

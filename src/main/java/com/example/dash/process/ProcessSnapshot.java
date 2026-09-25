@@ -19,4 +19,5 @@ public record ProcessSnapshot(
     Integer exitCode,
     String error,
     boolean alive,
-    ReadinessConfig readiness) {}
+    ReadinessConfig readiness,
+    String workspaceId) {}

@@ -27,9 +27,15 @@ On another machine, install JDK 21+, Maven 3.9+, and Node 22+/npm for frontend b
 java -jar target/quarkus-app/quarkus-run.jar
 ```
 
+## Workspaces
+
+Use the sidebar selector to switch workspaces, **New** to create one, and **Settings** to edit its name, description, accent, and default command directory. Each workspace shows its own commands and output. Switching leaves all processes running. Terminal tab, filter, pause, and combined-source selection are remembered per workspace in this browser. Existing commands remain in **Default**. Delete only empty non-default workspaces.
+
+See the complete [feature list](docs/features.md). Agents must update that list whenever user-facing behavior changes.
+
 ## Commands and terminals
 
-Define a name, executable/arguments, working directory, optional environment overrides, and terminal mode. Every command has a stable vivid identity color; leave color unset and p-dash generates one from the command ID, or choose one in the editor. That same color appears on the command card, group markers, and merged terminal source label. The command editor takes **one argument per line**, including the executable on the first line. Arguments are passed directly; do not add surrounding quotes to paths with spaces. To run shell syntax or Windows batch files, explicitly use a shell.
+Define a name, executable/arguments, working directory, optional environment overrides, and terminal mode. Every command has a stable vivid identity color; leave color unset and p-dash generates one from the command ID, or choose one in the editor. That same color appears on the command card and merged terminal source label. The command editor takes **one argument per line**, including the executable on the first line. Arguments are passed directly; do not add surrounding quotes to paths with spaces. To run shell syntax or Windows batch files, explicitly use a shell.
 
 For a Windows Maven module, enter:
 
@@ -41,9 +47,9 @@ cmd.exe
 mvnw.cmd -pl orders -am quarkus:dev -Dquarkus.http.port=8081
 ```
 
-Set the working directory to the repository root. Create another command for each independently running module, use distinct application/debug ports, and save them in a group. Group controls report each member's outcome; a group does not specify dependencies or readiness ordering.
+Set the working directory to the repository root. Create a command for each independently running module in the appropriate workspace, using distinct application/debug ports. Batch controls act on that workspace and do not specify dependencies or readiness ordering.
 
-PTY mode provides an interactive terminal through pty4j (ConPTY on Windows). Pipe mode preserves separate stdout and stderr streams. The combined terminal labels and merges multiple sources, preserving ANSI colors while removing unrelated cursor controls. It is read-only; select a process tab to type into that process. Existing timestamps are preserved rather than duplicated. Display pause does not pause the process.
+PTY mode provides an interactive terminal through pty4j (ConPTY on Windows). Pipe mode preserves separate stdout and stderr streams. Use source chips under **Combined stream** to select which commands to merge, or choose **All**, **Active now**, or **None**. Explicit selections persist after processes stop; All also includes newly added commands. The combined terminal labels and merges multiple sources, preserving ANSI colors while removing unrelated cursor controls. It is read-only; select a process tab to type into that process. Existing timestamps are preserved rather than duplicated. Display pause does not pause the process.
 
 The application chrome uses neutral grey colors; ANSI colors printed by commands remain visible. Each terminal tab has a green dot when its OS process is alive and a hollow grey dot otherwise. Command identity colors remain on cards and merged source labels.
 
@@ -53,7 +59,7 @@ In the command editor, **Ready when** offers a log regex, an HTTP(S) URL returni
 
 ## Java demos
 
-The first startup seeds three not-started commands and a Java demos group:
+The first startup seeds three not-started commands in the Default workspace:
 
 - Healthy: READY and regular heartbeat output.
 - Flaky: periodic warnings and stderr errors.
@@ -65,11 +71,11 @@ These are standalone Java child processes managed exactly like user commands. Th
 
 See [Agent and AI setup](docs/agent-setup.md) for MCP, REST, and CLI configuration.
 
-Tools cover definitions/groups, lifecycle, input/resize, incremental output, regex search, readiness, and process exit. `wait_for_ready` matches a supplied log regex; it is not an HTTP health probe. Wait calls are bounded to 30 seconds; resume from the returned cursor. See [API contract](docs/api.md).
+Tools cover definitions/workspaces, lifecycle, input/resize, incremental output, regex search, readiness, and process exit. `wait_for_ready` matches a supplied log regex; it is not an HTTP health probe. Wait calls are bounded to 30 seconds; resume from the returned cursor. See [API contract](docs/api.md).
 
 ## State and migration
 
-Private state lives in `.pdash/` and is ignored by Git: definitions, groups, token, migration notes, and bounded output snapshots. Existing v1 user definitions are imported once with an explicit shell invocation. The old `state.json` stays untouched for rollback. Legacy demo scripts are replaced by Java demos. Migration failures are recorded in `migration-v2.json`; original definitions remain in `state.json`.
+Private state lives in `.pdash/` and is ignored by Git: definitions, workspace settings, token, migration notes, and bounded output snapshots. Existing v1 user definitions are imported once with an explicit shell invocation. The old `state.json` stays untouched for rollback. Legacy demo scripts are replaced by Java demos. Migration failures are recorded in `migration-v2.json`; original definitions remain in `state.json`.
 
 Optional `.pdash/processes/*.yaml` files seed new IDs at startup. Existing saved definitions take precedence. Logs retain up to 12,000 events / roughly 2 MiB of text and metadata, with snapshots once per second. A crash may lose the last second of output. Cursors survive normal restarts; clients must handle `truncated` when history expires or the data directory changes.
 
@@ -86,5 +92,7 @@ mvn package
 ```
 
 Build the frontend before Maven packaging; Maven copies `frontend/dist` into the Quarkus application. For UI development, run Quarkus on 4310 and `npm run dev` in `frontend/` (Vite proxies API and WebSocket requests). Tests use an isolated state directory and random HTTP port; they launch real child JVMs and PTYs.
+
+Pipe processes receive OS termination directly instead of a Ctrl+C byte on stdin, avoiding the unnecessary three-second stop delay. PTYs retain Ctrl+C and the grace period.
 
 Windows is verified here. The pty4j backend supports Unix, but lifecycle behavior still needs a run on those platforms. Use [architecture](docs/architecture.md) for package responsibilities and tradeoffs.

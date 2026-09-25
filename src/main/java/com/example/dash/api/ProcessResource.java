@@ -14,7 +14,7 @@ import java.util.*;
 @Consumes(MediaType.APPLICATION_JSON)
 public class ProcessResource {
   @Inject ProcessManager manager;
-  @Inject GroupService groups;
+  @Inject WorkspaceService workspaces;
   @Inject LogService logs;
   @Inject LocalAccess access;
 
@@ -48,8 +48,8 @@ public class ProcessResource {
         logs.cursor(),
         "commands",
         manager.list(),
-        "groups",
-        groups.list());
+        "workspaces",
+        workspaces.list());
   }
 
   @GET
@@ -66,7 +66,8 @@ public class ProcessResource {
       Map<String, String> env,
       String color,
       String mode,
-      ReadinessConfig readiness) {
+      ReadinessConfig readiness,
+      String workspaceId) {
     ProcessConfig config(String id, ProcessConfig previous) {
       return new ProcessConfig(
           id,
@@ -78,7 +79,10 @@ public class ProcessResource {
           env != null ? env : previous == null ? null : previous.env(),
           color != null ? color : previous == null ? null : previous.color(),
           mode != null ? mode : previous == null ? null : previous.mode(),
-          readiness != null ? readiness : previous == null ? null : previous.readiness());
+          readiness != null ? readiness : previous == null ? null : previous.readiness(),
+          workspaceId != null
+              ? workspaceId
+              : previous == null ? "default" : previous.workspaceId());
     }
   }
 
@@ -103,7 +107,6 @@ public class ProcessResource {
   @Path("/commands/{id}")
   public Map<String, Boolean> delete(@PathParam("id") String id) {
     manager.remove(id);
-    groups.removeMember(id);
     return Map.of("ok", true);
   }
 
@@ -133,39 +136,6 @@ public class ProcessResource {
   public Map<String, Boolean> resize(@PathParam("id") String id, Size body) {
     manager.resize(id, body.cols(), body.rows());
     return Map.of("ok", true);
-  }
-
-  @GET
-  @Path("/groups")
-  public List<ProcessGroup> groups() {
-    return groups.list();
-  }
-
-  public record GroupBody(String name, List<String> processIds) {}
-
-  @POST
-  @Path("/groups")
-  public ProcessGroup group(GroupBody body) {
-    return groups.save(null, body.name(), body.processIds());
-  }
-
-  @PUT
-  @Path("/groups/{id}")
-  public ProcessGroup group(@PathParam("id") String id, GroupBody body) {
-    return groups.save(id, body.name(), body.processIds());
-  }
-
-  @DELETE
-  @Path("/groups/{id}")
-  public Map<String, Boolean> deleteGroup(@PathParam("id") String id) {
-    groups.delete(id);
-    return Map.of("ok", true);
-  }
-
-  @POST
-  @Path("/groups/{id}/{action:start|stop|restart}")
-  public Object groupControl(@PathParam("id") String id, @PathParam("action") String action) {
-    return groups.control(id, action);
   }
 
   @POST

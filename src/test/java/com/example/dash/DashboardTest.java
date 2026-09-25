@@ -282,7 +282,7 @@ class DashboardTest {
   void filteredReplayAndSplitRegex() throws Exception {
     var c = demo("pipe", "HEALTHY");
     long cursor = logs.cursor();
-    logs.append("groups", null, null, null, null, null, List.of());
+    logs.append("workspaces", null, null, null, null, null, List.of());
     logs.output(c.id(), "run", "\u001b[32mREA", "stdout");
     logs.output(c.id(), "run", "DY\u001b[0m", "stdout");
     var found = waits.waitForRegex(c.id(), "READY", cursor, 0);
