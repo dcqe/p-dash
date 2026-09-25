@@ -46,7 +46,7 @@ export default function App() {
   if (!workspace)
     return (
       <div className="loading-state" role="status">
-        Connecting to your workspaces…
+        Connecting…
       </div>
     );
   return (
@@ -162,7 +162,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
           </div>
           <WorkspacePicker workspace={workspace} workspaces={workspaces} onSwitch={onSwitch} />
           <p className="workspace-description">
-            {workspace.description || 'Your commands, your space.'}
+            {workspace.description || 'Workspace description not set.'}
           </p>
           <div className="workspace-actions">
             <button
@@ -183,7 +183,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
           Add command
         </button>
         <p className="sidebar-hint">
-          {commands.filter((c) => c.alive).length} active in this workspace
+          {commands.filter((c) => c.alive).length} active process{commands.filter((c) => c.alive).length === 1 ? '' : 'es'}
         </p>
         <div className="sidebar-bottom">
           <div className="local-status">
@@ -274,7 +274,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                     ) : c.exitCode != null ? (
                       `Exit ${c.exitCode} · ${ago(c.endedAt)} ago`
                     ) : (
-                      'Ready to start'
+                      'Not started'
                     )}
                   </span>
                   <div className="card-actions">
@@ -312,8 +312,8 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                 <span>
                   <Plus size={24} />
                 </span>
-                <strong>Your next command lives here.</strong>
-                <small>Add a dev server, worker, or anything that keeps running.</small>
+                  <strong>No commands configured.</strong>
+                  <small>Add a command to run a process.</small>
               </button>
             )}
           </div>
@@ -401,7 +401,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                       />
                     </button>
                   ))}
-                  {!merged.length && <span>Select commands to combine their output.</span>}
+                  {!merged.length && <span>No command output selected.</span>}
                 </>
               ) : (
                 <span>

@@ -89,7 +89,7 @@ export default function TerminalPane({ events, commands, processId, query, pause
     const fresh = matching.filter((e) => e.seq > rendered.current);
     if (!initialized.current && !matching.length) {
       term.writeln(
-        '\x1b[38;2;115;115;115m  Waiting for output. Start a command to bring this space to life.\x1b[0m\r\n',
+        '\x1b[38;2;115;115;115m  No output. Start a command to view output.\x1b[0m\r\n',
       );
       initialized.current = true;
     }

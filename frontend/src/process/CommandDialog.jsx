@@ -54,7 +54,7 @@ export default function CommandDialog({ command, cwd, onClose, onSave, onDelete 
         <div className="dialog-title">
           <div>
             <span className="eyebrow">COMMAND CONFIGURATION</span>
-            <h2 id="command-title">{command ? 'Edit command' : 'Make room for a new process.'}</h2>
+            <h2 id="command-title">{command ? 'Edit command' : 'New command'}</h2>
           </div>
           <button className="icon" onClick={onClose} aria-label="Close">
             <X size={20} />
@@ -66,7 +66,7 @@ export default function CommandDialog({ command, cwd, onClose, onSave, onDelete 
             <input autoFocus required placeholder="orders-service" {...field('name')} />
           </label>
           <label>
-            Executable and arguments <span className="muted">One per line · no extra quoting</span>
+            Executable and arguments <span className="muted">One argument per line</span>
             <textarea
               required
               rows="3"
@@ -77,8 +77,8 @@ export default function CommandDialog({ command, cwd, onClose, onSave, onDelete 
           <label>
             Terminal mode
             <select {...field('mode')}>
-              <option value="pty">Interactive terminal (PTY)</option>
-              <option value="pipe">Pipes (separate stdout / stderr)</option>
+              <option value="pty">Interactive terminal</option>
+              <option value="pipe">Pipes (separate output streams)</option>
             </select>
           </label>
           <label>
@@ -87,10 +87,10 @@ export default function CommandDialog({ command, cwd, onClose, onSave, onDelete 
               value={readiness.mode}
               onChange={(e) => setReadiness({ ...readiness, mode: e.target.value, value: '' })}
             >
-              {!command && <option value="auto">Auto (Quarkus startup message or READY)</option>}
-              <option value="log">Output matches a pattern</option>
-              <option value="http">Health URL responds successfully</option>
-              <option value="process">Process starts (no application readiness check)</option>
+              {!command && <option value="auto">Automatic</option>}
+              <option value="log">Log pattern matches</option>
+              <option value="http">Health URL returns success</option>
+              <option value="process">Process starts</option>
             </select>
           </label>
           {['log', 'http'].includes(readiness.mode) && (
@@ -123,7 +123,7 @@ export default function CommandDialog({ command, cwd, onClose, onSave, onDelete 
           )}
           <label>
             Working directory
-            <input required placeholder="Absolute path to your project" {...field('cwd')} />
+            <input required placeholder="Absolute directory path" {...field('cwd')} />
           </label>
           <label>
             Environment overrides{' '}

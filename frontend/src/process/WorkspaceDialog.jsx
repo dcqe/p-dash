@@ -62,7 +62,7 @@ export default function WorkspaceDialog({ workspace, cwd, empty, onClose, onSave
         <div className="dialog-title">
           <div>
             <span className="eyebrow">YOUR WORKSPACE</span>
-            <h2 id="workspace-title">{workspace ? 'Workspace settings' : 'A fresh workspace'}</h2>
+            <h2 id="workspace-title">{workspace ? 'Workspace settings' : 'New workspace'}</h2>
           </div>
           <button className="icon" aria-label="Close" disabled={busy} onClick={onClose}>
             <X size={20} />
@@ -105,8 +105,8 @@ export default function WorkspaceDialog({ workspace, cwd, empty, onClose, onSave
             <input required {...field('workingDirectory')} />
           </label>
           <p className="muted">
-            Used for new commands. Existing commands keep their own directory. Switching workspaces
-            leaves processes running.
+            Default directory for new commands. Existing commands are unchanged. Switching workspaces
+            does not stop processes.
           </p>
           {error && (
             <p className="error" role="alert">
