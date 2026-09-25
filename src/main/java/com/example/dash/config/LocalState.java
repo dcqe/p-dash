@@ -34,10 +34,9 @@ public class LocalState {
               root.resolve("owner.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
       lock = lockChannel.tryLock();
       if (lock == null) throw new IllegalStateException("Another p-dash instance owns " + root);
-      for (var folder : java.util.List.of("logs", "runtime", "auth", "backups", "imports"))
+      for (var folder : java.util.List.of("logs", "runtime", "auth", "imports"))
         Files.createDirectories(root.resolve(folder));
       loadConfig();
-      migrateFiles();
     } catch (IOException e) {
       closeAfterFailure();
       throw new IllegalStateException(e);
@@ -57,10 +56,14 @@ public class LocalState {
       if (!(tree instanceof ObjectNode object)) throw new IOException("config.json must be an object");
       config = object;
     } else {
+      for (var name : java.util.List.of("processes.json", "workspaces.json", "state.json", "groups.json", "token", "logs.json", "lifecycle.json")) {
+        if (Files.exists(file(name)))
+          throw new IOException("Unsupported state layout in " + root + "; use a clean data directory or supply current config.json");
+      }
       config = mapper.createObjectNode();
       config.put("version", 1);
-      config.set("workspaces", legacyArray("workspaces.json"));
-      config.set("commands", legacyArray("processes.json"));
+      config.putArray("workspaces");
+      config.putArray("commands");
     }
     if (!config.path("version").isIntegralNumber() || config.path("version").asInt() != 1)
       throw new IOException("Unsupported config.json version; expected 1");
@@ -89,44 +92,6 @@ public class LocalState {
       if (!workspaceIds.contains(c.workspaceId())) throw new IOException("Unknown workspace: " + c.workspaceId());
     }
     write("config.json", config);
-    // Commit the unified document before archiving its inputs. An interrupted migration can resume.
-    archive("processes.json");
-    archive("workspaces.json");
-  }
-
-  private com.fasterxml.jackson.databind.JsonNode legacyArray(String name) throws IOException {
-    return Files.exists(root.resolve(name))
-        ? mapper.readTree(root.resolve(name).toFile()) : mapper.createArrayNode();
-  }
-
-  private void archive(String name) throws IOException {
-    moveLegacy(name, "backups/" + name);
-  }
-
-  private void moveLegacy(String name, String destination) throws IOException {
-    var source = root.resolve(name);
-    var target = root.resolve(destination);
-    if (Files.exists(source)) {
-      // Never replace a newer destination or lose either copy after a partial migration.
-      if (Files.exists(target)) target = root.resolve("backups/" + name.replace('/', '-') + "-" + java.util.UUID.randomUUID());
-      Files.move(source, target);
-    }
-  }
-
-  private void migrateFiles() throws IOException {
-    moveLegacy("logs.json", "logs/output.json");
-    moveLegacy("lifecycle.json", "runtime/lifecycle.json");
-    moveLegacy("token", "auth/token");
-    moveLegacy("processes", "imports/processes");
-    archive("groups.json");
-    archive("state.json");
-    try (var files = Files.list(root)) {
-      for (var p : files.filter(Files::isRegularFile).toList()) {
-        var name = p.getFileName().toString();
-        if (name.endsWith(".log")) moveLegacy(name, "logs/" + name);
-        if (name.endsWith(".pid")) moveLegacy(name, "runtime/" + name);
-      }
-    }
   }
 
   public synchronized <T> T readConfig(String section, Class<T> type) {
@@ -147,10 +112,6 @@ public class LocalState {
   void unlock() throws IOException {
     if (lock != null) lock.release();
     if (lockChannel != null) lockChannel.close();
-  }
-
-  public Path root() {
-    return root;
   }
 
   public Path file(String name) {

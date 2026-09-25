@@ -25,7 +25,7 @@ class LifecycleRestoreTest {
         if (status != ProcessStatus.NOT_STARTED) { managed.runId = "previous-run"; managed.startedAt = "2026-09-24T12:00:00Z"; }
         registry.recordLifecycle(managed.snapshot());
       }
-      var restored = new ProcessRegistry(); restored.state = state; restored.mapper = mapper; restored.load();
+      var restored = new ProcessRegistry(); restored.state = state; restored.load();
       assertEquals(ProcessStatus.NOT_STARTED, restored.get(ids.get(0)).snapshot().status());
       assertEquals(ProcessStatus.STOPPED, restored.get(ids.get(1)).snapshot().status());
       var interrupted = restored.get(ids.get(2)).snapshot();

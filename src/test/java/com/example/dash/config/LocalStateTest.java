@@ -22,31 +22,24 @@ class LocalStateTest {
     return state;
   }
 
-  @Test void migrationPreservesDefinitionsCredentialsHistoryAndUnknownFiles() throws Exception {
+  @Test void configSectionsPreserveOtherSectionsAndSurviveRestart() throws Exception {
     var command = new ProcessConfig("saved", "Saved", List.of("java", "-version"),
         directory.toString(), Map.of("EXAMPLE", "preserve-me"), null, "pipe");
-    mapper.writeValue(directory.resolve("processes.json").toFile(), List.of(command));
-    mapper.writeValue(directory.resolve("workspaces.json").toFile(), List.of(
-        new Workspace("default", "Personal", "description", null, directory.toString())));
-    for (var name : List.of("token", "logs.json", "lifecycle.json", "server.log", "groups.json", "state.json", "custom.txt"))
-      Files.writeString(directory.resolve(name), "original-" + name);
     var state = open();
     try {
-      assertEquals(command, state.readConfig("commands", ProcessConfig[].class)[0]);
-      assertEquals("Personal", state.readConfig("workspaces", Workspace[].class)[0].name());
-      assertEquals("original-token", Files.readString(state.file("auth/token")));
-      assertEquals("original-logs.json", Files.readString(state.file("logs/output.json")));
-      assertEquals("original-lifecycle.json", Files.readString(state.file("runtime/lifecycle.json")));
-      assertEquals("original-server.log", Files.readString(state.file("logs/server.log")));
-      assertTrue(Files.exists(state.file("backups/processes.json")));
-      assertFalse(Files.exists(state.file("processes.json")));
-      assertTrue(Files.exists(state.file("custom.txt")));
-      state.writeConfig("workspaces", List.of(new Workspace("default", "Edited", null, null, directory.toString())));
-      assertEquals(command, mapper.treeToValue(mapper.readTree(state.file("config.json").toFile()).path("commands").get(0), ProcessConfig.class));
+      assertEquals(0, state.readConfig("commands", ProcessConfig[].class).length);
+      assertFalse(Files.exists(state.file("backups")));
+      state.writeConfig("commands", List.of(command));
+      state.writeConfig("workspaces", List.of(
+          new Workspace("default", "Personal", "description", null, directory.toString())));
+      assertEquals(command, mapper.treeToValue(
+          mapper.readTree(state.file("config.json").toFile()).path("commands").get(0), ProcessConfig.class));
     } finally { state.unlock(); }
     var reopened = open();
-    try { assertEquals("Edited", reopened.readConfig("workspaces", Workspace[].class)[0].name()); }
-    finally { reopened.unlock(); }
+    try {
+      assertEquals("Personal", reopened.readConfig("workspaces", Workspace[].class)[0].name());
+      assertEquals(command, reopened.readConfig("commands", ProcessConfig[].class)[0]);
+    } finally { reopened.unlock(); }
   }
 
   @Test void invalidConfigIsPreservedAndReleasesLock() throws Exception {
@@ -60,20 +53,13 @@ class LocalStateTest {
     state.unlock();
   }
 
-  @Test void existingConfigWinsAndConflictingFilesAreKept() throws Exception {
-    var first = open();
-    first.unlock();
-    Files.writeString(directory.resolve("processes.json"), "invalid legacy content");
-    Files.writeString(directory.resolve("auth/token"), "current");
-    Files.writeString(directory.resolve("token"), "old");
-    var state = open();
-    try {
-      assertEquals(0, state.readConfig("commands", ProcessConfig[].class).length);
-      assertEquals("current", Files.readString(state.file("auth/token")));
-      try (var backups = Files.list(state.file("backups"))) {
-        assertTrue(backups.anyMatch(p -> p.getFileName().toString().startsWith("token-")));
-      }
-    } finally { state.unlock(); }
+  @Test void incompatibleStateIsRejectedWithoutConversionOrDeletion() throws Exception {
+    var original = "[{\"old\":true}]";
+    Files.writeString(directory.resolve("processes.json"), original);
+    assertThrows(IllegalStateException.class, this::open);
+    assertEquals(original, Files.readString(directory.resolve("processes.json")));
+    assertFalse(Files.exists(directory.resolve("config.json")));
+    assertFalse(Files.exists(directory.resolve("backups")));
   }
 
   @Test void unknownWorkspaceAndDuplicateIdsDoNotOverwriteConfig() throws Exception {

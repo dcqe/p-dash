@@ -49,18 +49,15 @@ Workspace and command IDs must be unique within their catalogs and stable. Each 
 ```text
 .pdash/
   config.json             Settings, workspaces, commands
-  owner.lock              Compatibility lock shared with older p-dash versions
+  owner.lock              Single-server ownership lock
   auth/token              Local bearer credential
   logs/output.json        Bounded process output and sequenced events
-  logs/*.log              Migrated server/launcher log files
   runtime/lifecycle.json  Latest lifecycle snapshots
-  runtime/*.pid           Migrated legacy PID files (not used to restore ownership)
   imports/processes/      Optional YAML seed definitions
-  backups/                Original legacy configuration and conflicting files
 ```
 
-Startup combines the old `workspaces.json` and `processes.json`, validates them, atomically saves config, and archives those inputs. Existing `config.json` takes precedence. It moves the token, logs and lifecycle files to their new locations; group/state files are archived without interpretation. Conflicting destination files are retained and legacy copies get unique backup names. Unknown files remain untouched. Migration runs under the same ownership lock as before, and can resume after interruption. Invalid config fails startup without replacing it. Backups can contain environment secrets too.
+Startup reads only `config.json`, `auth/token`, `runtime/lifecycle.json`, and `logs/output.json`. A clean data directory receives a fresh current configuration. Older flat state without a current config is rejected without modifying its files. Unsupported config versions and invalid definitions fail startup without overwriting the config. There is no migration, archival, or lifecycle reconstruction from logs. Missing lifecycle state means commands start with no previous run history; interrupted current runs are still marked failed on restart.
 
-Optional YAML seeds add missing IDs only; they do not override saved commands. To permanently remove a seeded command, also disable demo seeding or remove its YAML seed. Logs keep the existing bounded retention, cursor and flush behavior. Log files migrated from old launchers are historical; the current launcher writes server diagnostics to its console.
+Optional YAML seeds add missing IDs only; they do not override saved commands. To permanently remove a seeded command, also disable demo seeding or remove its YAML seed. Logs keep the existing bounded retention, cursor and flush behavior. The launcher writes server diagnostics to its console.
 
-The token value is preserved on migration, but clients that read its file must switch to `auth/token`. Downgrading requires a stopped application and restoring old-layout files from backups; older versions do not understand `config.json`.
+Credentials are read only from `auth/token`. Older application versions and storage layouts are not supported.

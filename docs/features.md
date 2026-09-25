@@ -6,7 +6,7 @@ This is the inventory of implemented user-facing behavior. Keep it current whene
 
 - Switch from the workspace selector in the sidebar, including on narrow screens. Each workspace has its own command definitions, lifecycle display, output view, terminal tabs, and batch controls.
 - **New** creates an empty workspace. **Settings** changes its name, description, accent color, and default working directory. New commands start with that directory in their editor; existing command directories do not change.
-- Workspace settings and each command's workspace assignment persist on the server. Existing definitions without an assignment belong to **Default**, preserving IDs, environment overrides, lifecycle history, and retained output.
+- Workspace settings and each command's workspace assignment persist on the server. New commands without an explicit workspace use **Default**.
 - On each application launch, the first workspace listed by the server configuration opens. The selected terminal tab, text filter, display pause, and combined-stream source selection persist separately per workspace in this browser. If browser storage is unavailable, views still work for the current session.
 - Switching never starts or stops a process. Commands in other workspaces continue running. Start/stop/restart all acts only on the displayed workspace; errors are reported per command.
 - Delete an empty workspace from Settings with confirmation. Default cannot be deleted. Remove stopped commands first. Commands cannot be reassigned to another workspace; create a new definition there instead.
@@ -40,12 +40,12 @@ This is the inventory of implemented user-facing behavior. Keep it current whene
 - First startup seeds Healthy, Flaky, and Chatty Java command definitions in Default; none starts automatically. Demo seeding can be disabled. YAML files can seed additional IDs; saved definitions take precedence.
 - Local bearer authentication protects REST and embedded Streamable HTTP MCP. Host/Origin checks and short-lived, single-use terminal tickets protect browser access. Environment values are excluded from status responses.
 - MCP and REST share the same services for workspace settings, process definitions, lifecycle, explicit terminal input/resize, incremental logs, regex search, bounded log/readiness waits, and process-exit waits. See [API contract](api.md) and [agent setup](agent-setup.md).
-- Command groups have been removed from the UI, services, REST, MCP, and events; old group files are preserved under `backups/` and ignored.
+- Command groups are not supported.
 
 ## Configuration and storage
 
 - Edit .pdash/config.json while the app is stopped: it contains version, settings, workspaces, and commands. UI and API changes save to that same file. Restart to apply file edits; there is no live file reload.
 - Launcher settings control port and browser launch; demoEnabled controls seeding. Environment/CLI overrides remain available. See [configuration](configuration.md) for the full format and direct-Java limitations.
-- Logs live in logs/, credentials in auth/, lifecycle and legacy PID files in runtime/, optional YAML seeds in imports/processes/, and migration originals in backups/. The root owner.lock remains for compatibility with older servers. Unknown files are left alone.
-- Startup migrates the old flat layout without changing saved definitions or the bearer token. Invalid config, duplicate IDs, and missing workspace references prevent startup without replacing the config. Existing config wins over legacy definitions; backups retain conflicting legacy files.
+- Output lives in `logs/`, credentials in `auth/`, lifecycle state in `runtime/`, and optional YAML seeds in `imports/processes/`. The root `owner.lock` prevents two servers from owning the same data directory.
+- Startup uses only the current configuration and storage layout. Fresh directories get a current config; incompatible flat state without a current config is rejected unchanged. No migration, backup creation, old-token fallback, or lifecycle reconstruction from logs is performed. Invalid config, duplicate IDs, and missing workspace references prevent startup without replacing the config.
 - The launcher serves a freshly built frontend; it has no dev-mode switch. Use `mvn quarkus:dev` and `npm run dev` in frontend/ separately for hot reload.

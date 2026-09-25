@@ -152,13 +152,6 @@ button.primary:hover {
   color: #878787;
   margin-top: 3px;
 }
-.workspace-dot {
-  width: 5px;
-  height: 5px;
-  background: #afafaf;
-  border-radius: 50%;
-  margin-left: auto;
-}
 .section-label {
   font-size: 9px;
   letter-spacing: 1.5px;
@@ -215,38 +208,6 @@ button.primary:hover {
 .sidebar-bottom {
   margin-top: auto;
   padding-top: 25px;
-}
-.agent-card {
-  border: 1px solid #3e3e3e;
-  border-radius: 9px;
-  padding: 15px;
-  background: radial-gradient(ellipse at 0 0, #323232, transparent 80%);
-  position: relative;
-}
-.agent-icon {
-  display: flex;
-  color: #c6c6c6;
-  margin-bottom: 12px;
-}
-.agent-card strong {
-  font-size: 11px;
-  color: #cdcdcd;
-  font-weight: 500;
-}
-.agent-card p {
-  font-size: 11px;
-  line-height: 1.6;
-  color: #8b8b8b;
-  margin: 7px 0 12px;
-}
-.agent-card button {
-  justify-content: space-between;
-  width: 100%;
-  font-size: 10px;
-  background: #363636;
-  color: #cdcdcd;
-  border-color: #4a4a4a;
-  padding: 8px;
 }
 .local-status {
   display: flex;
@@ -956,53 +917,6 @@ h2 {
   color: #e7e7e7;
   font-size: 12px;
 }
-.agent-page {
-  max-width: 850px;
-  padding: 45px 0;
-}
-.agent-page > p {
-  color: #a0a0a0;
-  line-height: 1.8;
-  max-width: 600px;
-}
-.agent-doc {
-  background: #222222;
-  border: 1px solid #464646;
-  border-radius: 10px;
-  padding: 25px;
-  margin-top: 25px;
-}
-.agent-doc h2 {
-  font-size: 17px;
-  margin: 12px 0;
-}
-.agent-doc p {
-  color: #9f9f9f;
-  line-height: 1.8;
-  font-size: 12px;
-}
-.agent-doc pre {
-  background: #151515;
-  border: 1px solid #404040;
-  border-radius: 7px;
-  padding: 17px;
-  font-size: 12px;
-  color: #cfcfcf;
-  overflow: auto;
-  line-height: 1.7;
-}
-.agent-doc h2:not(:first-child) {
-  margin-top: 30px;
-}
-.agent-note {
-  border-top: 1px solid #464646;
-  margin-top: 20px;
-  padding-top: 20px;
-  color: #b8b8b8;
-  display: flex;
-  gap: 9px;
-  font-size: 11px;
-}
 @media (min-width: 1600px) {
   main {
     padding: 0 50px;
@@ -1148,9 +1062,6 @@ h2 {
   }
   .dialog {
     padding: 20px;
-  }
-  .agent-page {
-    padding-top: 28px;
   }
 }
 

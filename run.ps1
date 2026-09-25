@@ -43,7 +43,6 @@ function Stop-PortOwners([int]$listenPort) {
 }
 # Ask the existing app to flush its state and stop its managed processes first.
 $tokenPath = Join-Path $dataRoot 'auth/token'
-if (-not (Test-Path -LiteralPath $tokenPath)) { $tokenPath = Join-Path $dataRoot 'token' }
 $previousOwners = @(Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique)
 if ($previousOwners.Count -and (Test-Path -LiteralPath $tokenPath)) {
     try {

@@ -82,7 +82,7 @@ Status and WebSocket snapshots include `workspaces`: an array of `{id, name, des
 
 Process definitions and snapshots include `workspaceId`. Omission at creation maps to `default`; REST PATCH preserves an omitted assignment. An existing process cannot be reassigned (400); create another definition in the target workspace instead. Workspace settings never modify existing command directories.
 
-REST/MCP discovery and logs remain server-wide. Use returned workspaceId to choose process IDs and pass those IDs to log queries. View switching and combined-source selection are browser preferences, with no lifecycle side effects. Command group endpoints and tools have been removed; legacy group files are ignored.
+REST/MCP discovery and logs remain server-wide. Use returned workspaceId to choose process IDs and pass those IDs to log queries. View switching and combined-source selection are browser preferences, with no lifecycle side effects. Command group endpoints and tools are not supported.
 
 ## WebSocket
 

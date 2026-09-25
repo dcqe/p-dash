@@ -10,7 +10,6 @@ import java.util.*;
 @ApplicationScoped
 public class ProcessRegistry {
   @Inject LocalState state;
-  @Inject com.fasterxml.jackson.databind.ObjectMapper mapper;
   private final Map<String, ManagedProcess> processes = new LinkedHashMap<>();
   private final Map<String, ProcessSnapshot> history = new LinkedHashMap<>();
 
@@ -19,26 +18,6 @@ public class ProcessRegistry {
     var definitions = state.readConfig("commands", ProcessConfig[].class);
     for (var c : definitions) processes.put(c.id(), new ManagedProcess(c));
     var saved = state.read("runtime/lifecycle.json", ProcessSnapshot[].class, new ProcessSnapshot[0]);
-    if (!java.nio.file.Files.exists(state.file("runtime/lifecycle.json"))) {
-      // Recover known prior runs on upgrade from retained state events, without reviving PIDs.
-      var recovered = new LinkedHashMap<String, ProcessSnapshot>();
-      var oldLogs =
-          state.read(
-              "logs/output.json",
-              com.fasterxml.jackson.databind.JsonNode.class,
-              mapper.createObjectNode());
-      for (var entry : oldLogs.path("entries")) {
-        if (!entry.path("type").asText().equals("state") || !entry.path("process").isObject())
-          continue;
-        var node =
-            (com.fasterxml.jackson.databind.node.ObjectNode) entry.path("process").deepCopy();
-        if (node.path("runId").isMissingNode() || node.path("runId").isNull())
-          node.put("status", "not_started");
-        var snapshot = mapper.convertValue(node, ProcessSnapshot.class);
-        recovered.put(snapshot.id(), snapshot);
-      }
-      saved = recovered.values().toArray(ProcessSnapshot[]::new);
-    }
     for (var old : saved) {
       var p = processes.get(old.id());
       if (p == null) continue;
@@ -48,13 +27,6 @@ public class ProcessRegistry {
       p.endedAt = old.endedAt();
       p.exitCode = old.exitCode();
       p.error = old.error();
-      if (p.status == ProcessStatus.FAILED
-          && Objects.equals(p.exitCode, 0)
-          && p.error != null
-          && p.error.contains("exited unexpectedly")) {
-        p.status = ProcessStatus.EXITED;
-        p.error = null;
-      }
       if (Set.of(ProcessStatus.STARTING, ProcessStatus.RUNNING, ProcessStatus.STOPPING)
           .contains(p.status)) {
         p.status = ProcessStatus.FAILED;
