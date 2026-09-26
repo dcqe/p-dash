@@ -69,7 +69,7 @@ export default function CommandDialog({ command, cwd, onClose, onSave, onDelete 
             Executable and arguments <span className="muted">One argument per line</span>
             <textarea
               required
-              rows="3"
+              rows="6"
               placeholder={'cmd.exe\n/d\n/s\n/c\nmvnw.cmd -pl orders -am quarkus:dev'}
               {...field('command')}
             />

@@ -74,6 +74,8 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
   const commands = workspaceCommands(dashboard.commands, workspace.id);
   const visible = commands;
   const merged = streamCommands(commands, sources);
+  const allSourcesSelected =
+    sources === null || (commands.length > 0 && commands.every((c) => sources?.includes(c.id)));
   const events = dashboard.events.filter((e) => commands.some((c) => c.id === e.processId));
   const cwd = workspace.workingDirectory;
   useEffect(() => {
@@ -364,8 +366,8 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
               {tab === 'combined' ? (
                 <>
                   <button
-                    className="source-chip"
-                    aria-pressed={sources === null}
+                    className={`source-chip ${allSourcesSelected ? 'included' : ''}`}
+                    aria-pressed={allSourcesSelected}
                     onClick={() => setSources(null)}
                   >
                     All
@@ -440,23 +442,6 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
               paused={paused}
               onError={fail}
             />
-          </div>
-          <div className="terminal-bottom">
-            <span>
-              <span className={`dot ${connection === 'live' && !paused ? 'running' : ''}`} />
-              {paused
-                ? 'Display paused · output still captured'
-                : connection === 'live'
-                  ? 'Streaming live'
-                  : 'Reconnecting to server'}
-              <span className="terminal-meta">
-                {tab === 'combined' ? 'Merged output · read only' : 'Interactive terminal'}
-              </span>
-            </span>
-            <span>
-              {events.filter((e) => e.type === 'output').length.toLocaleString()} output chunks
-              <span className="terminal-meta">UTF-8</span>
-            </span>
           </div>
         </section>
       </main>

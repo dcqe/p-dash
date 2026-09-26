@@ -701,24 +701,6 @@ h2 {
   scrollbar-width: thin;
   scrollbar-color: #444444 #141414;
 }
-.terminal-bottom {
-  padding: 9px 14px;
-  border-top: 1px solid #343434;
-  display: flex;
-  justify-content: space-between;
-  color: #8f8f8f;
-  background: #1e1e1e;
-  font-size: 9px;
-}
-.terminal-bottom > span {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.terminal-meta {
-  margin-left: 12px;
-  color: #6c6c6c;
-}
 .overlay {
   position: fixed;
   inset: 0;
