@@ -11,6 +11,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
+@io.quarkus.runtime.Startup
 public class LocalAccess {
   @Inject LocalState state;
   private String token;

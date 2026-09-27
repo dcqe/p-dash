@@ -60,6 +60,11 @@ jobs:
           done
           if [[ "$ready" != true ]]; then cat server.log; exit 1; fi
           grep -q '<div id="root"' index.html
+          if [[ ! -s "$PDASH_DATA/auth/token" ]]; then
+            echo 'Startup did not create the bearer token.' >&2
+            cat server.log
+            exit 1
+          fi
           curl --fail --silent --show-error \
             -H "Authorization: Bearer $(cat "$PDASH_DATA/auth/token")" \
             http://127.0.0.1:14310/api/status | jq -e '.commands | type == "array"'
