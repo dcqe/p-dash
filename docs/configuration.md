@@ -18,7 +18,7 @@ The file is created on first startup. A minimal example (replace the example dir
       "name": "Orders",
       "description": "Local services",
       "color": "#5B8FF9",
-      "workingDirectory": "C:\\projects\\orders"
+      "workingDirectory": "/home/alice/projects/orders"
     }
   ],
   "commands": [
@@ -26,8 +26,8 @@ The file is created on first startup. A minimal example (replace the example dir
       "id": "orders-api",
       "workspaceId": "orders",
       "name": "API",
-      "command": ["cmd.exe", "/d", "/s", "/c", "mvnw.cmd quarkus:dev"],
-      "workingDirectory": "C:\\projects\\orders",
+      "command": ["./mvnw", "quarkus:dev"],
+      "workingDirectory": "/home/alice/projects/orders",
       "env": {},
       "mode": "pty",
       "readiness": {
@@ -42,7 +42,7 @@ The file is created on first startup. A minimal example (replace the example dir
 
 Workspace and command IDs must be unique within their catalogs and stable. Each command references a workspace; omission uses `default`, which the application supplies if absent. Workspace directories prefill the UI command editor; each saved command still needs its own absolute directory. Workspace settings do not change existing commands. The API contract documents the remaining [command and workspace fields](api.md). Commands never start automatically. Dependencies and start ordering are not supported.
 
-`settings.port` (1–65535) and `settings.openBrowser` are read by `run.ps1`. `PDASH_PORT` overrides the port and `-NoBrowser` disables browser launch. Direct `java -jar` launches use Quarkus properties/environment for port and browser launch instead. `settings.demoEnabled` controls Java demo seeding for script and direct-Java launches; `-Dpdash.demo.enabled=false` can also disable it. Disabling seeding does not remove saved demos. All three settings are required when supplying a settings object; omitting the entire object supplies defaults of 4310, true, and true.
+`settings.port` (1–65535) and `settings.openBrowser` are read by `run.sh` (Linux default) and `run.ps1` (Windows). `PDASH_PORT` overrides the port and `--no-browser` on Linux (`-NoBrowser` on Windows) disables browser launch. Direct `java -jar` launches use Quarkus properties/environment for port and browser launch instead. `settings.demoEnabled` controls Java demo seeding for script and direct-Java launches; `-Dpdash.demo.enabled=false` can also disable it. Disabling seeding does not remove saved demos. All three settings are required when supplying a settings object; omitting the entire object supplies defaults of 4310, true, and true.
 
 `PDASH_DATA` selects the data directory before config is read; it cannot be set inside that directory's config. Owner PID, authentication credentials, lifecycle history, logs, and browser view preferences are not user configuration. Environment overrides in commands may contain secrets: keep the entire data directory private and out of Git.
 

@@ -70,7 +70,7 @@ export default function CommandDialog({ command, cwd, onClose, onSave, onDelete 
             <textarea
               required
               rows="6"
-              placeholder={'cmd.exe\n/d\n/s\n/c\nmvnw.cmd -pl orders -am quarkus:dev'}
+              placeholder={'./mvnw\n-pl\norders\n-am\nquarkus:dev'}
               {...field('command')}
             />
           </label>

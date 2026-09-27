@@ -54,7 +54,7 @@ For example, `tools/call` for readiness uses:
 
 Get status to discover IDs. Capture the cursor before starting/restarting when waiting for new readiness output. `get_logs` returns events, cursor, latest, oldest and truncated. Resume from cursor; keep fetching while cursor is below latest. `limit` is 1–12000; default tool limit is 1000. `plain` strips ANSI. Waits accept 0–30000 ms and return matched, timedOut, exited, truncated, cursor, optional text and process. Continue a timed-out wait from cursor, or reread an overlap if a pattern might span the previous call's trailing fragment.
 
-Definitions use argument arrays, never an implicit shell. Set `mode` to `pty` or `pipe`. On Windows, batch files and shell syntax need an explicit `cmd.exe /d /s /c` command. Set an absolute existing working directory. Stop before editing/deleting. Update via MCP replaces the full config, including env. Env values are not returned by status. Send `\r` for Enter in a PTY (`\n` for a line-oriented pipe program).
+Definitions use argument arrays, never an implicit shell. Set `mode` to `pty` or `pipe`. On Linux, shell syntax needs an explicit `/bin/bash -lc` command; executable scripts such as `./mvnw` can run directly. On Windows, batch files and shell syntax need an explicit `cmd.exe /d /s /c` command. Set an absolute existing working directory. Stop before editing/deleting. Update via MCP replaces the full config, including env. Env values are not returned by status. Send `\r` for Enter in a PTY (`\n` for a line-oriented pipe program).
 
 ## REST
 

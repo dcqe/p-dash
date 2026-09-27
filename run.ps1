@@ -17,13 +17,14 @@ $port = if ($env:PDASH_PORT) { [int]$env:PDASH_PORT } elseif ($settings) { [int]
 if ($port -lt 1 -or $port -gt 65535) { throw 'Port must be 1-65535.' }
 $openBrowser = -not $NoBrowser -and (-not $settings -or $settings.openBrowser)
 $javaHome = $env:JAVA_HOME
-if (-not $javaHome) {
-    $portable = Get-ChildItem -LiteralPath (Join-Path $projectRoot '.tools') -Directory -Filter 'jdk-*' -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($portable) { $javaHome = $portable.FullName }
-}
 $java = if ($javaHome) { Join-Path $javaHome 'bin\java.exe' } else { (Get-Command java.exe -ErrorAction Stop).Source }
 if (-not (Test-Path -LiteralPath $java)) { throw 'Install JDK 21+ and set JAVA_HOME.' }
 $env:JAVA_HOME = Split-Path -Parent (Split-Path -Parent $java)
+if (-not (Test-Path -LiteralPath (Join-Path $env:JAVA_HOME 'bin\javac.exe'))) { throw 'JAVA_HOME must point to a JDK, not a JRE.' }
+$maven = Get-Command mvn.cmd -ErrorAction SilentlyContinue
+if (-not $maven) { throw 'Install Maven 3.9+ and put mvn.cmd on PATH.' }
+$mvn = $maven.Source
+if (-not (Get-Command npm.cmd -ErrorAction SilentlyContinue)) { throw 'Install Node.js 22.12+ with npm on PATH.' }
 $jar = Join-Path $projectRoot 'target\quarkus-app\quarkus-run.jar'
 
 function Stop-PortOwners([int]$listenPort) {
@@ -57,12 +58,6 @@ if ($previousOwners.Count -and (Test-Path -LiteralPath $tokenPath)) {
 }
 Stop-PortOwners $port
 
-$maven = Get-Command mvn.cmd -ErrorAction SilentlyContinue
-if ($maven) { $mvn = $maven.Source } else {
-    $portableMaven = Get-ChildItem -LiteralPath (Join-Path $projectRoot '.tools') -Directory -Filter 'apache-maven-*' -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $portableMaven) { throw 'Install Maven 3.9+ and put mvn.cmd on PATH.' }
-    $mvn = Join-Path $portableMaven.FullName 'bin\mvn.cmd'
-}
 Push-Location (Join-Path $projectRoot 'frontend')
 try {
     Write-Host 'Installing locked frontend dependencies...'
@@ -74,7 +69,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed.' }
 } finally { Pop-Location }
 # A clean package also removes stale/deleted Java classes and copied web assets.
-& $mvn '-Dmaven.repo.local=.tools/m2' -B clean package
+& $mvn -B clean package
 if ($LASTEXITCODE -ne 0) { throw 'Java build or tests failed.' }
 $env:PDASH_OWNER_PID = "$PID"
 $env:PDASH_OPEN_BROWSER = if ($openBrowser) { 'true' } else { 'false' }

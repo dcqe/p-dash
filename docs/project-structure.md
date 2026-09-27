@@ -2,8 +2,12 @@
 
 ```text
 p-dash/
+├── run.sh                          Default Linux build/run and packaged launcher
+├── scripts/package-linux.sh        Linux distribution archive and checksum
+├── .github/workflows/linux.yml     Ubuntu tests and distribution artifact
 ├── run.ps1                         All Windows build/replace/run logic
-├── .run/p-dash.run.xml              Shared IntelliJ Shell Script configuration
+├── .run/p-dash.run.xml              IntelliJ Linux configuration
+├── .run/p-dash-windows.run.xml      IntelliJ Windows configuration
 ├── pom.xml                         Quarkus/Maven build
 ├── src/
 │   ├── main/
@@ -49,7 +53,7 @@ p-dash/
 These directories are created or used locally and are ignored by Git:
 
 - `.pdash/config.json` stores user settings, workspaces, and command definitions. `logs/`, `runtime/`, `auth/`, and `imports/` separate other purposes; see [configuration](configuration.md).
-- `.tools/` contains the portable JDK/Maven tools used on this workstation.
+- `.tools/` is ignored but unused by the launchers. Any existing local tools/cache can remain there; builds use installed tools and Maven's normal user cache.
 - `target/` contains Maven and Quarkus build output.
 - `frontend/node_modules/` contains browser build dependencies.
 - `frontend/dist/` contains the production UI copied into the Quarkus package.
