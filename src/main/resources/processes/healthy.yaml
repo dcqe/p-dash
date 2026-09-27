@@ -8,3 +8,8 @@ command:
   - "${demo.classpath}"
   - com.example.dash.demo.DemoProcessRunner
   - HEALTHY
+
+readiness:
+  mode: log
+  value: '\bREADY\b'
+  timeoutMs: 120000

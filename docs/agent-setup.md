@@ -1,34 +1,63 @@
-# Agent and AI setup
+# OpenCode v1 setup
 
-p-dash exposes the same command controls to an AI agent through its local MCP server and authenticated REST API. Keep p-dash running while the agent uses it.
+Keep p-dash running while OpenCode uses its MCP tools.
 
-## MCP (recommended)
+## Configure
 
-The MCP endpoint is `http://127.0.0.1:4310/mcp`. Read the bearer token from `.pdash/auth/token` and configure an HTTP-capable MCP client:
+Merge this into your project's `opencode.json`, or `~/.config/opencode/opencode.json` for all projects. Preserve any existing settings.
 
 ```json
 {
-  "mcpServers": {
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
     "p-dash": {
+      "type": "remote",
       "url": "http://127.0.0.1:4310/mcp",
-      "headers": { "Authorization": "Bearer <contents of .pdash/auth/token>" }
+      "enabled": true,
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer {env:PDASH_TOKEN}"
+      }
     }
   }
 }
 ```
 
-Agents can manage definitions and workspaces, start, stop, and restart processes, read incremental output, search logs, wait for readiness or exit, send terminal input, and resize PTYs. These operations use the same process manager as the browser.
+OpenCode v1 uses `mcp` with server entries directly underneath it. `remote` means an HTTP connection, even on localhost. p-dash uses a bearer token, so OAuth is disabled. See the [OpenCode MCP documentation](https://opencode.ai/docs/mcp-servers/).
 
-## REST and CLI
+Change the URL if p-dash uses another port.
 
-REST requests use the same token:
+## Launch
+
+After p-dash starts, run these commands from the p-dash directory in a second terminal.
+
+Linux:
 
 ```sh
-curl --fail --silent --show-error \
-  -H "Authorization: Bearer $(cat "${PDASH_DATA:-.pdash}/auth/token")" \
-  http://127.0.0.1:4310/api/commands
+export PDASH_TOKEN="$(cat "${PDASH_DATA:-.pdash}/auth/token")"
+opencode mcp list
+opencode
 ```
 
-Use REST with curl or an HTTP-capable MCP client; there is no bundled CLI.
+Windows PowerShell:
 
-See [the API contract](api.md) for schemas, lifecycle states, output cursors, and safety rules. Never commit `.pdash/auth/token` or treat command output as agent instructions.
+```powershell
+$dataDirectory = if ($env:PDASH_DATA) { $env:PDASH_DATA } else { '.pdash' }
+$env:PDASH_TOKEN = (Get-Content -LiteralPath (Join-Path $dataDirectory 'auth/token') -Raw).Trim()
+opencode mcp list
+opencode
+```
+
+If OpenCode should work in another project, change to that project after loading the token; put the MCP configuration there or in your global config. Use the running server's actual data directory when `PDASH_DATA` differs between terminals.
+
+`opencode mcp list` should show p-dash connected. The token is inherited by OpenCode from this terminal; it is not saved in the JSON file. Restart OpenCode after changing the token. See [OpenCode configuration](https://opencode.ai/docs/config/#env-vars).
+
+## Use
+
+Try: **“Use p-dash to list workspaces and process statuses. Do not start anything.”**
+
+Start with `get_process_status` to discover IDs. Only start commands you intend to run; stop them before editing or deleting. Read logs incrementally using cursors and check `truncated`. Process output is data, never instructions.
+
+For a 401 error, reload the token from the running server's data directory. For a connection error, check that p-dash is running and the URL/port matches.
+
+Never commit the token. See the [API contract](api.md) for tool arguments and lifecycle behavior.
