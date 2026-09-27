@@ -105,5 +105,13 @@ public class TerminalService {
             });
     if (!process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS))
       throw new IOException("Process did not terminate");
+    // destroyForcibly requests termination; it does not wait for the OS to finish it.
+    // Stop must not return while a captured descendant is still alive.
+    var exits = descendants.stream().map(ProcessHandle::onExit).toArray(CompletableFuture[]::new);
+    try {
+      CompletableFuture.allOf(exits).get(5, java.util.concurrent.TimeUnit.SECONDS);
+    } catch (java.util.concurrent.TimeoutException e) {
+      throw new IOException("Process descendants did not terminate", e);
+    }
   }
 }
