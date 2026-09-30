@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Download,
+  Eraser,
   PanelLeftClose,
   PanelLeftOpen,
   Folder,
@@ -17,8 +17,9 @@ import {
 } from 'lucide-react';
 import { api } from './api/client.js';
 import { useDashboard } from './api/useDashboard.js';
-import { active, ago, plain, statusLabel } from './ui.js';
+import { active, ago, statusLabel } from './ui.js';
 import TerminalPane from './terminal/TerminalPane.jsx';
+import CopyOutputButton from './terminal/CopyOutputButton.jsx';
 import CommandDialog from './process/CommandDialog.jsx';
 import WorkspaceDialog from './process/WorkspaceDialog.jsx';
 import WorkspacePicker from './process/WorkspacePicker.jsx';
@@ -70,6 +71,10 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
   const [sources, setSources] = useState(saved.sources);
   const [dialog, setDialog] = useState(null);
   const [busy, setBusy] = useState(new Set());
+  const [clearedTabs, setClearedTabs] = useState({});
+  const terminalRef = useRef();
+  const filterInput = useRef();
+  const [filterFocusRequest, setFilterFocusRequest] = useState(0);
   const { connection, workspaces } = dashboard;
   const commands = workspaceCommands(dashboard.commands, workspace.id);
   const visible = commands;
@@ -78,6 +83,22 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
     sources === null || (commands.length > 0 && commands.every((c) => sources?.includes(c.id)));
   const events = dashboard.events.filter((e) => commands.some((c) => c.id === e.processId));
   const cwd = workspace.workingDirectory;
+  useEffect(() => {
+    const focusFilter = (event) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        setTab('combined');
+        setFilterFocusRequest((request) => request + 1);
+      }
+    };
+    window.addEventListener('keydown', focusFilter, true);
+    return () => window.removeEventListener('keydown', focusFilter, true);
+  }, []);
+  useEffect(() => {
+    if (!filterFocusRequest) return;
+    filterInput.current?.focus();
+    filterInput.current?.select();
+  }, [filterFocusRequest]);
   useEffect(() => {
     remember(`pdash.view.${workspace.id}`, { tab, query, paused, sources });
   }, [tab, query, paused, sources, workspace.id]);
@@ -110,25 +131,6 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
     } catch (e) {
       fail(e);
     }
-  }
-  function download() {
-    const text = events
-      .filter(
-        (e) =>
-          e.type === 'output' &&
-          visible.some((c) => c.id === e.processId) &&
-          (tab === 'combined' ? merged.some((c) => c.id === e.processId) : tab === e.processId),
-      )
-      .map(
-        (e) => `[${e.time}] [${commands.find((c) => c.id === e.processId)?.name}] ${plain(e.data)}`,
-      )
-      .join('\n');
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'p-dash-output.log';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return (
     <div className={`app-shell ${sidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
@@ -352,13 +354,24 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
             </div>
             <div className="terminal-tools">
               <button
-                className="icon"
-                aria-label="Download output"
-                title="Download output"
-                onClick={download}
+                className="text-button"
+                aria-label="Clear current terminal output"
+                title="Clear current screen"
+                onClick={() =>
+                  setClearedTabs((prev) => ({
+                    ...prev,
+                    [tab]: dashboard.events.at(-1)?.seq || 0,
+                  }))
+                }
               >
-                <Download size={15} />
+                <Eraser size={15} />
+                Clear
               </button>
+              <CopyOutputButton
+                getLines={(count) => terminalRef.current?.getLines(count) || []}
+                onMessage={setToast}
+                onError={fail}
+              />
             </div>
           </div>
           <div className="terminal-filter">
@@ -417,7 +430,9 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                 <label className="search">
                   <Search size={13} />
                   <input
+                    ref={filterInput}
                     aria-label="Filter combined output"
+                    title="Filter output (Ctrl+F)"
                     placeholder="Filter output…"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
@@ -434,12 +449,14 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
           </div>
           <div className="terminal-body">
             <TerminalPane
+              ref={terminalRef}
               key={tab}
               events={events}
               commands={tab === 'combined' ? merged : visible}
               processId={tab === 'combined' ? null : tab}
               query={query}
               paused={paused}
+              clearAfter={clearedTabs[tab] ?? null}
               onError={fail}
             />
           </div>

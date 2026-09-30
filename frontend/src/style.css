@@ -631,6 +631,68 @@ h2 {
 .terminal-tools button {
   color: #969696;
 }
+.copy-output {
+  position: relative;
+}
+.copy-split {
+  display: flex;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.copy-split button {
+  border: 0;
+  border-radius: 0;
+  padding: 5px 8px;
+  background: transparent;
+  font-size: 12px;
+}
+.copy-split button:hover {
+  background: #323232;
+}
+.copy-split button:focus-visible {
+  outline-offset: -2px;
+}
+.copy-split .copy-toggle {
+  border-left: 1px solid #3a3a3a;
+  padding: 5px;
+}
+.copy-options {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 10;
+  width: 210px;
+  padding: 12px;
+  border: 1px solid #414141;
+  border-radius: 7px;
+  background: #242424;
+  box-shadow: 0 8px 24px #0008;
+}
+.copy-options label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.copy-options > div {
+  display: flex;
+  gap: 8px;
+}
+.copy-options input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #414141;
+  border-radius: 5px;
+  color: #e0e0e0;
+  background: #181818;
+}
+.copy-options button {
+  padding: 6px 10px;
+}
+.copy-options button.primary {
+  color: #242424;
+}
 .terminal-filter {
   display: flex;
   align-items: center;

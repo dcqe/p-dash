@@ -1,13 +1,26 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { CombinedLines } from './combined.js';
 import { api } from '../api/client.js';
 import { plain } from '../ui.js';
-export default function TerminalPane({ events, commands, processId, query, paused, onError }) {
+import { lastTerminalLines } from './output.js';
+const CLEAR_SCREEN = '\x1b[0m\x1b[2J\x1b[3J\x1b[H';
+
+export default forwardRef(function TerminalPane(
+  { events, commands, processId, query, paused, clearAfter = null, onError },
+  ref,
+) {
   const combined = useRef(new CombinedLines());
   const host = useRef();
   const terminal = useRef();
+  useImperativeHandle(
+    ref,
+    () => ({
+      getLines: (count) => lastTerminalLines(terminal.current?.buffer.active, count),
+    }),
+    [],
+  );
   const rendered = useRef(0);
   const initialized = useRef(false);
   const queue = useRef(Promise.resolve());
@@ -78,22 +91,21 @@ export default function TerminalPane({ events, commands, processId, query, pause
     };
   }, [processId]);
   useEffect(() => {
-    terminal.current?.reset();
-    rendered.current = 0;
-    initialized.current = false;
+    // Queue the clear after pending writes so old output cannot reappear afterward.
+    terminal.current?.write(CLEAR_SCREEN);
+    rendered.current = clearAfter ?? 0;
+    initialized.current = clearAfter !== null;
     combined.current = new CombinedLines();
-  }, [query, commands.map((c) => `${c.id}:${c.name}:${c.color}`).join(',')]);
+  }, [query, clearAfter, commands.map((c) => `${c.id}:${c.name}:${c.color}`).join(',')]);
   useEffect(() => {
     const term = terminal.current;
     if (!term || paused) return;
     const fresh = matching.filter((e) => e.seq > rendered.current);
     if (!initialized.current && !matching.length) {
-      term.writeln(
-        '\x1b[38;2;115;115;115m  No output. Start a command to view output.\x1b[0m\r\n',
-      );
+      term.writeln('\x1b[38;2;115;115;115m  No output. Start a command to view output.\x1b[0m\r\n');
       initialized.current = true;
     }
-    if (fresh.length && rendered.current === 0) term.reset();
+    if (fresh.length && rendered.current === 0) term.write(CLEAR_SCREEN);
     for (const event of fresh) {
       if (processId) term.write(event.data);
       else {
@@ -112,7 +124,7 @@ export default function TerminalPane({ events, commands, processId, query, pause
       rendered.current = fresh.at(-1).seq;
       initialized.current = true;
     }
-  }, [events, paused, query, commands, processId]);
+  }, [events, paused, query, commands, processId, clearAfter]);
   return (
     <div
       className="terminal-host"
@@ -120,4 +132,4 @@ export default function TerminalPane({ events, commands, processId, query, pause
       aria-label={processId ? 'Interactive terminal' : 'Combined terminal output'}
     />
   );
-}
+});
