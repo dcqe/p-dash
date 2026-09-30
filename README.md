@@ -1,42 +1,33 @@
 # p-dash
 
-A local dashboard for long-running commands, with workspaces, interactive terminals, combined logs, readiness checks, and an embedded MCP server. One Java/Quarkus application owns all processes.
+A local dashboard for long-running commands, interactive terminals, combined logs, workspaces, and AI agent access through MCP.
 
 ## Run
 
-Linux is the default platform (glibc, x86-64).
-
-**Prerequisites:** JDK 21+, Maven 3.9+, Node.js 22.12+/npm, Bash, jq.
+Install JDK 21+, Maven 3.9+, and Node.js 22.12+/npm. Linux also requires Bash and jq; Windows requires Windows PowerShell. Tools must be on PATH; Windows can use JAVA_HOME for the JDK.
 
 ```sh
-./run.sh
+./run.sh              # Linux (glibc, x86-64)
 ```
-
-Open http://127.0.0.1:4310. Each launch tests and builds the app. Add `--no-browser` to suppress browser launch. In IntelliJ, select **p-dash — Linux** or **p-dash — Windows** (Shell scripts plugin).
-
-Stop an existing instance before launching. Ctrl+C stops the app and managed commands; closing the browser does not. Commands never start automatically.
-
-**Prebuilt archive:** Java 21+, Bash and jq only. After extraction:
-
-```sh
-./run.sh --no-build --no-browser
-```
-
-**Windows:** JDK 21+, Maven 3.9+, Node.js 22.12+/npm, Windows PowerShell.
-
-Launchers use installed tools on `PATH` (`JAVA_HOME` for the Windows JDK) and Maven's standard cache; no project-local `.tools` setup is needed.
 
 ```powershell
-.\run.ps1
+.\run.ps1            # Windows
 ```
 
-The Windows launcher replaces existing listeners on the configured port; keep it dedicated to p-dash.
+Both launchers test and build before starting. In IntelliJ, use **p-dash — Linux** or **p-dash — Windows** with the Shell scripts plugin. Open http://127.0.0.1:4310. Suppress browser launch with `--no-browser` on Linux or `-NoBrowser` on Windows.
+
+Stop an existing Linux instance first. The Windows launcher stops existing listeners on the configured port, so keep that port dedicated to p-dash. Ctrl+C stops the app and managed commands; closing the browser leaves them running.
 
 ## Use
 
-Create a workspace, add commands, and start them from the dashboard. Enter the executable and each argument on separate lines. Use a process tab for interactive input or **Combined stream** to view multiple commands.
+Create a workspace, add commands, and start them explicitly. Enter the executable and each argument on separate lines—for example:
 
-Settings and definitions live in `.pdash/config.json`; edit it only while stopped. `PDASH_DATA` selects another state directory and `PDASH_PORT` overrides port 4310. Keep state private and preserve it across upgrades.
+```text
+mvn
+quarkus:dev
+```
+
+Set the working directory to the project's absolute path. Open a process tab for interactive input or **Combined stream** for merged output. Commands never start automatically.
 
 ## Development
 
@@ -50,12 +41,12 @@ mvn test
 mvn package
 ```
 
-For hot reload, run `mvn quarkus:dev` and `npm run dev` in `frontend/` separately.
+For hot reload, run `mvn quarkus:dev` and, in another terminal, `npm run dev` from `frontend/`.
 
 ## Documentation
 
-- [Features](docs/features.md)
+- [Major features](docs/features.md)
 - [Configuration and storage](docs/configuration.md)
-- [Agent setup](docs/agent-setup.md) and [API contract](docs/api.md)
-- [Architecture](docs/architecture.md)
-- [Publishing](docs/publishing.md)
+- [Agent setup](docs/agent-setup.md) · [API](docs/api.md)
+- [Architecture](docs/architecture.md) · [Source map](docs/project-structure.md)
+- [Linux builds and distribution](docs/publishing.md)

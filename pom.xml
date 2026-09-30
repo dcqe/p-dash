@@ -13,6 +13,7 @@
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-reactive-routes</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-websockets</artifactId></dependency>
     <dependency><groupId>io.quarkiverse.mcp</groupId><artifactId>quarkus-mcp-server-http</artifactId><version>${mcp.version}</version></dependency>
+    <dependency><groupId>com.github.victools</groupId><artifactId>jsonschema-module-jackson</artifactId><version>4.38.0</version></dependency>
     <dependency><groupId>org.jetbrains.pty4j</groupId><artifactId>pty4j</artifactId><version>0.13.13</version></dependency>
     <dependency><groupId>com.fasterxml.jackson.dataformat</groupId><artifactId>jackson-dataformat-yaml</artifactId></dependency>
     <dependency><groupId>com.google.re2j</groupId><artifactId>re2j</artifactId><version>1.8</version></dependency>

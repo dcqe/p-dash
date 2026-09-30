@@ -81,7 +81,8 @@ export function useDashboard(onMessage) {
         };
         socket.onclose = reconnect;
         socket.onerror = () => socket.close();
-      } catch {
+      } catch (error) {
+        if (!disposed) onMessage(`Connection failed: ${error.message}`);
         reconnect();
       }
     }

@@ -2,7 +2,10 @@ let token;
 export async function api(route, method = 'GET', body) {
   if (!token) {
     const response = await fetch('/api/session');
-    if (!response.ok) throw new Error('Could not establish a session');
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || `Could not establish a session (HTTP ${response.status})`);
+    }
     token = (await response.json()).token;
   }
   const res = await fetch('/api' + route, {

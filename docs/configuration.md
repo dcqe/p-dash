@@ -1,63 +1,46 @@
 # Configuration and storage
 
-Stop p-dash before editing `.pdash/config.json`, then restart it. The dashboard and REST/MCP save workspace and command edits to this same file. It is formatted JSON, without comments. Editing it while the server runs is unsupported: the next UI/API save can overwrite external changes.
+Settings, workspaces, and command definitions live in `.pdash/config.json`. UI/API edits save there. Stop p-dash before editing it manually, then restart. Keep the data directory private: command environment values and credentials may contain secrets.
 
-The file is created on first startup. A minimal example (replace the example directories with existing absolute paths):
+`PDASH_DATA` selects another data directory. Use an absolute path outside the installation to retain state when replacing a packaged build.
+
+## Configuration
+
+Example with an existing absolute project directory:
 
 ```json
 {
   "version": 1,
-  "settings": {
-    "port": 4310,
-    "openBrowser": true,
-    "demoEnabled": false
-  },
-  "workspaces": [
-    {
-      "id": "orders",
-      "name": "Orders",
-      "description": "Local services",
-      "color": "#5B8FF9",
-      "workingDirectory": "/home/alice/projects/orders"
-    }
-  ],
-  "commands": [
-    {
-      "id": "orders-api",
-      "workspaceId": "orders",
-      "name": "API",
-      "command": ["./mvnw", "quarkus:dev"],
-      "workingDirectory": "/home/alice/projects/orders",
-      "env": {},
-      "mode": "pty",
-      "readiness": {
-        "mode": "log",
-        "value": "started in.*Listening on:",
-        "timeoutMs": 120000
-      }
-    }
-  ]
+  "settings": {"port": 4310, "openBrowser": true, "demoEnabled": false},
+  "workspaces": [],
+  "commands": [{
+    "id": "app",
+    "workspaceId": "default",
+    "name": "App",
+    "command": ["mvn", "quarkus:dev"],
+    "workingDirectory": "/home/me/project",
+    "env": {},
+    "mode": "pty",
+    "readiness": {"mode": "auto"}
+  }]
 }
 ```
 
-Workspace and command IDs must be unique within their catalogs and stable. Each command references a workspace; omission uses `default`, which the application supplies if absent. Workspace directories prefill the UI command editor; each saved command still needs its own absolute directory. Workspace settings do not change existing commands. The API contract documents the remaining [command and workspace fields](api.md). Commands never start automatically. Dependencies and start ordering are not supported.
+IDs must be unique and workspace references valid; Default is supplied automatically. See [API](api.md) for definition fields.
 
-`settings.port` (1–65535) and `settings.openBrowser` are read by `run.sh` (Linux default) and `run.ps1` (Windows). `PDASH_PORT` overrides the port and `--no-browser` on Linux (`-NoBrowser` on Windows) disables browser launch. Direct `java -jar` launches use Quarkus properties/environment for port and browser launch instead. `settings.demoEnabled` controls Java demo seeding for script and direct-Java launches; `-Dpdash.demo.enabled=false` can also disable it. Disabling seeding does not remove saved demos. All three settings are required when supplying a settings object; omitting the entire object supplies defaults of 4310, true, and true.
+The launchers read `port` and `openBrowser`. `PDASH_PORT` overrides the port; `--no-browser` (Linux) or `-NoBrowser` (Windows) disables browser launch. Direct Java launches use Quarkus properties/environment for these options. All three settings fields are required if `settings` is supplied; otherwise defaults are 4310, true, true.
 
-`PDASH_DATA` selects the data directory before config is read; it cannot be set inside that directory's config. Owner PID, authentication credentials, lifecycle history, logs, and browser view preferences are not user configuration. Environment overrides in commands may contain secrets: keep the entire data directory private and out of Git.
+`demoEnabled` controls demo seeding. Optional YAML seeds add missing IDs without replacing saved definitions. Disable seeding or remove the relevant seed to prevent a deleted demo from returning.
 
-```text
-.pdash/
-  config.json             Settings, workspaces, commands
-  owner.lock              Single-server ownership lock
-  auth/token              Local bearer credential
-  logs/output.json        Bounded process output and sequenced events
-  runtime/lifecycle.json  Latest lifecycle snapshots
-  imports/processes/      Optional YAML seed definitions
-```
+## Stored state
 
-Startup reads only `config.json`, `auth/token`, `runtime/lifecycle.json`, and `logs/output.json`. A clean data directory receives a fresh current configuration. Older flat state without a current config is rejected without modifying its files. Unsupported config versions and invalid definitions fail startup without overwriting the config. There is no migration, archival, or lifecycle reconstruction from logs. Missing lifecycle state means commands start with no previous run history; interrupted current runs are still marked failed on restart.
+| Path within the data directory | Contents |
+| --- | --- |
+| `config.json` | Settings, workspaces, commands |
+| `auth/token` | REST/MCP bearer credential |
+| `logs/output.json` | Bounded output and event history |
+| `runtime/lifecycle.json` | Latest process lifecycle state |
+| `imports/processes/` | Optional YAML seeds |
+| `owner.lock` | Exclusive server ownership |
 
-Optional YAML seeds add missing IDs only; they do not override saved commands. To permanently remove a seeded command, also disable demo seeding or remove its YAML seed. Logs keep the existing bounded retention, cursor and flush behavior. The launcher writes server diagnostics to its console.
-
-Credentials are read only from `auth/token`. Older application versions and storage layouts are not supported.
+Only the current storage format is supported; incompatible state is rejected without conversion. Preserve user files when resolving errors. History retains up to 12,000 events / roughly 2 MiB across the server and flushes every second, so crashes may lose recent output. Interrupted runs are marked failed on restart.

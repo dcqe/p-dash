@@ -46,7 +46,7 @@ export default function App() {
   if (!workspace)
     return (
       <div className="loading-state" role="status">
-        Connecting…
+        {toast || (dashboard.connection === 'reconnecting' ? 'Connection lost. Retrying…' : 'Connecting…')}
       </div>
     );
   return (
