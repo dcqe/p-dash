@@ -2,12 +2,11 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { CombinedLines } from './combined.js';
-import { api } from '../api/client.js';
 import { plain } from '../ui.js';
 import { lastTerminalLines } from './output.js';
-const CLEAR_SCREEN = '\x1b[0m\x1b[2J\x1b[3J\x1b[H';
+const CLEAR_SCREEN = '\x1b[?25l\x1b[0m\x1b[2J\x1b[3J\x1b[H';
 
-export default forwardRef(function TerminalPane(
+export default forwardRef(function LogPane(
   { events, commands, processId, query, paused, clearAfter = null, onError },
   ref,
 ) {
@@ -23,7 +22,7 @@ export default forwardRef(function TerminalPane(
   );
   const rendered = useRef(0);
   const initialized = useRef(false);
-  const queue = useRef(Promise.resolve());
+  const hasLine = useRef(false);
   const processes = useRef(commands);
   processes.current = commands;
   const matching = processId
@@ -34,14 +33,14 @@ export default forwardRef(function TerminalPane(
       fontFamily: '"Cascadia Code", "SFMono-Regular", Consolas, monospace',
       fontSize: 12,
       lineHeight: 1.65,
-      cursorBlink: true,
-      cursorStyle: 'bar',
+      disableStdin: true,
+      cursorBlink: false,
+      cursorInactiveStyle: 'none',
       scrollback: 12000,
       convertEol: true,
       theme: {
         background: '#121212',
         foreground: '#c2c2c2',
-        cursor: '#dddddd',
         selectionBackground: '#444444',
         black: '#606060',
         red: '#f08b89',
@@ -56,35 +55,41 @@ export default forwardRef(function TerminalPane(
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.open(host.current);
+    term.write('\x1b[?25l');
+    term.attachCustomKeyEventHandler((event) => {
+      if (
+        event.type === 'keydown' &&
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === 'c'
+      ) {
+        if (term.hasSelection()) {
+          event.preventDefault();
+          navigator.clipboard.writeText(term.getSelection()).catch(onError);
+        }
+        return false;
+      }
+      return true;
+    });
     terminal.current = term;
     rendered.current = 0;
     initialized.current = false;
+    hasLine.current = false;
     let resizeTimer;
     const resize = () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
         try {
           fit.fit();
-          if (processId)
-            api(`/commands/${processId}/resize`, 'POST', {
-              cols: term.cols,
-              rows: term.rows,
-            }).catch(onError);
         } catch {}
       }, 100);
     };
     const observer = new ResizeObserver(resize);
     observer.observe(host.current);
     resize();
-    const subscription = term.onData((data) => {
-      if (processId)
-        queue.current = queue.current
-          .then(() => api(`/commands/${processId}/input`, 'POST', { data }))
-          .catch(onError);
-    });
     return () => {
       clearTimeout(resizeTimer);
-      subscription.dispose();
       observer.disconnect();
       term.dispose();
       terminal.current = null;
@@ -96,26 +101,36 @@ export default forwardRef(function TerminalPane(
     rendered.current = clearAfter ?? 0;
     initialized.current = clearAfter !== null;
     combined.current = new CombinedLines();
+    hasLine.current = false;
   }, [query, clearAfter, commands.map((c) => `${c.id}:${c.name}:${c.color}`).join(',')]);
   useEffect(() => {
     const term = terminal.current;
     if (!term || paused) return;
     const fresh = matching.filter((e) => e.seq > rendered.current);
     if (!initialized.current && !matching.length) {
-      term.writeln('\x1b[38;2;115;115;115m  No output. Start a command to view output.\x1b[0m\r\n');
+      term.write('\x1b[38;2;115;115;115m  No output. Start a command to view output.\x1b[0m');
       initialized.current = true;
     }
-    if (fresh.length && rendered.current === 0) term.write(CLEAR_SCREEN);
+    if (fresh.length && rendered.current === 0) {
+      term.write(CLEAR_SCREEN);
+      hasLine.current = false;
+    }
+    const appendLine = (line) => {
+      term.write(`${hasLine.current ? '\r\n' : ''}${line}`);
+      hasLine.current = true;
+    };
     for (const event of fresh) {
-      if (processId) term.write(event.data);
-      else {
-        const c = processes.current.find((c) => c.id === event.processId);
-        const rgb = (c?.color || '#bcbcbc').match(/\w\w/g).map((n) => parseInt(n, 16));
-        const lines = combined.current
-          .push(`${event.processId}:${event.runId}`, event.data)
-          .filter((line) => !query || plain(line).toLowerCase().includes(query.toLowerCase()));
-        for (const line of lines)
-          term.writeln(
+      const c = processes.current.find((c) => c.id === event.processId);
+      const rgb = (c?.color || '#bcbcbc').match(/\w\w/g).map((n) => parseInt(n, 16));
+      const lines = combined.current
+        .push(`${event.processId}:${event.runId}:${event.stream}`, event.data)
+        .filter(
+          (line) => processId || !query || plain(line).toLowerCase().includes(query.toLowerCase()),
+        );
+      for (const line of lines) {
+        if (processId) appendLine(`${line}\x1b[0m`);
+        else
+          appendLine(
             `\x1b[0m${/^\d{1,2}:\d{2}:\d{2}(?:\.\d+)?\b/.test(plain(line).trim()) ? '' : `\x1b[38;2;105;105;105m${new Date(event.time).toLocaleTimeString('en-GB')}\x1b[0m  `}\x1b[38;2;${rgb.join(';')}m${(c?.name || 'process').padEnd(17)}\x1b[0m  ${line}\x1b[0m`,
           );
       }
@@ -129,7 +144,7 @@ export default forwardRef(function TerminalPane(
     <div
       className="terminal-host"
       ref={host}
-      aria-label={processId ? 'Interactive terminal' : 'Combined terminal output'}
+      aria-label={processId ? 'Process log output' : 'Combined log output'}
     />
   );
 });

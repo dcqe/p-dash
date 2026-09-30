@@ -1130,9 +1130,16 @@ main {
 }
 .terminal-host {
   position: absolute;
-  inset: 10px 8px 6px 12px;
+  inset: 3px 8px 3px 12px;
   width: auto;
   height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.terminal-host > .xterm {
+  /* Split the space left by whole terminal rows equally above and below the logs. */
+  flex-shrink: 0;
 }
 .terminal-tabs {
   overflow-y: hidden;

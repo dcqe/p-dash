@@ -1,3 +1,20 @@
+export function readLastWorkspace() {
+  try {
+    const id = JSON.parse(localStorage.getItem('pdash.workspace'));
+    return typeof id === 'string' ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+export function selectedWorkspace(workspaces, id) {
+  return (
+    workspaces.find((workspace) => workspace.id === id) ||
+    workspaces.find((workspace) => workspace.id === 'default') ||
+    workspaces[0]
+  );
+}
+
 export function readView(id) {
   try {
     const value = JSON.parse(localStorage.getItem(`pdash.view.${id}`)) || {};

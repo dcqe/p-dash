@@ -18,12 +18,14 @@ import {
 import { api } from './api/client.js';
 import { useDashboard } from './api/useDashboard.js';
 import { active, ago, statusLabel } from './ui.js';
-import TerminalPane from './terminal/TerminalPane.jsx';
+import LogPane from './terminal/LogPane.jsx';
 import CopyOutputButton from './terminal/CopyOutputButton.jsx';
 import CommandDialog from './process/CommandDialog.jsx';
 import WorkspaceDialog from './process/WorkspaceDialog.jsx';
 import WorkspacePicker from './process/WorkspacePicker.jsx';
 import {
+  readLastWorkspace,
+  selectedWorkspace,
   readView,
   remember,
   workspaceCommands,
@@ -32,7 +34,7 @@ import {
 export default function App() {
   const [toast, setToast] = useState(null);
   const dashboard = useDashboard(setToast);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState(readLastWorkspace);
   const [sidebarExpanded, setSidebarExpanded] = useState(() => window.innerWidth >= 1280);
   useEffect(() => {
     const wide = window.matchMedia('(min-width: 1280px)');
@@ -40,10 +42,12 @@ export default function App() {
     wide.addEventListener('change', update);
     return () => wide.removeEventListener('change', update);
   }, []);
-  const workspace = dashboard.workspaces.find((w) => w.id === selected) || dashboard.workspaces[0];
+  const workspace = selectedWorkspace(dashboard.workspaces, selected);
   useEffect(() => {
-    if (!selected && dashboard.workspaces.length) setSelected(dashboard.workspaces[0].id);
-  }, [dashboard.workspaces, selected]);
+    if (!workspace) return;
+    if (selected !== workspace.id) setSelected(workspace.id);
+    remember('pdash.workspace', workspace.id);
+  }, [workspace?.id, selected]);
   if (!workspace)
     return (
       <div className="loading-state" role="status">
@@ -353,6 +357,11 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
               ))}
             </div>
             <div className="terminal-tools">
+              <CopyOutputButton
+                getLines={(count) => terminalRef.current?.getLines(count) || []}
+                onMessage={setToast}
+                onError={fail}
+              />
               <button
                 className="text-button"
                 aria-label="Clear current terminal output"
@@ -367,11 +376,6 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                 <Eraser size={15} />
                 Clear
               </button>
-              <CopyOutputButton
-                getLines={(count) => terminalRef.current?.getLines(count) || []}
-                onMessage={setToast}
-                onError={fail}
-              />
             </div>
           </div>
           <div className="terminal-filter">
@@ -420,7 +424,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                 </>
               ) : (
                 <span>
-                  Interactive PTY · keyboard input goes to{' '}
+                  Logs ·{' '}
                   {commands.find((c) => c.id === tab)?.name}
                 </span>
               )}
@@ -448,7 +452,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
             </div>
           </div>
           <div className="terminal-body">
-            <TerminalPane
+            <LogPane
               ref={terminalRef}
               key={tab}
               events={events}

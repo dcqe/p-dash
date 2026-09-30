@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readView, remember, workspaceCommands, streamCommands } from '../src/workspace.js';
+import {
+  readLastWorkspace,
+  selectedWorkspace,
+  readView,
+  remember,
+  workspaceCommands,
+  streamCommands,
+} from '../src/workspace.js';
 
 test('workspace commands and combined selection cannot include another workspace', () => {
   const commands = [
@@ -36,4 +43,30 @@ test('views restore separately and tolerate unavailable or corrupt browser stora
   delete globalThis.localStorage;
   assert.equal(readView('one').sources, null);
   assert.doesNotThrow(() => remember('x', {}));
+});
+
+test('last workspace restores after reload and falls back safely when deleted or storage is unavailable', () => {
+  const data = new Map();
+  globalThis.localStorage = {
+    getItem: (key) => data.get(key),
+    setItem: (key, value) => data.set(key, value),
+  };
+  const workspaces = [{ id: 'one' }, { id: 'default' }, { id: 'two' }];
+  remember('pdash.workspace', 'two');
+  assert.equal(selectedWorkspace(workspaces, readLastWorkspace()).id, 'two');
+  assert.equal(
+    selectedWorkspace(
+      workspaces.filter((w) => w.id !== 'two'),
+      readLastWorkspace(),
+    ).id,
+    'default',
+  );
+  assert.equal(selectedWorkspace([], readLastWorkspace()), undefined);
+  assert.equal(readLastWorkspace(), 'two');
+  data.set('pdash.workspace', '{broken');
+  assert.equal(readLastWorkspace(), null);
+  data.set('pdash.workspace', '123');
+  assert.equal(readLastWorkspace(), null);
+  delete globalThis.localStorage;
+  assert.equal(selectedWorkspace(workspaces, readLastWorkspace()).id, 'default');
 });

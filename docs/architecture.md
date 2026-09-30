@@ -2,7 +2,7 @@
 
 ## One process owner
 
-A Java 21 / Quarkus application owns all child processes. REST, WebSocket, and embedded Streamable HTTP MCP share the same services. React/Vite supplies the frontend; xterm.js renders terminals; pty4j provides native PTYs, including Windows ConPTY. There is no Node backend or separate MCP process manager.
+A Java 21 / Quarkus application owns all child processes. REST, WebSocket, and embedded Streamable HTTP MCP share the same services. React/Vite supplies the frontend; xterm.js renders read-only logs; pty4j provides native PTYs, including Windows ConPTY. There is no Node backend or separate MCP process manager.
 
 ```text
 Browser ── REST / WebSocket ─┐
@@ -17,7 +17,7 @@ Lifecycle operations are serialized per process. PTY shutdown sends Ctrl+C befor
 
 One server exclusively owns a local data directory. Configuration and runtime history are separate; writes use atomic file replacement. Restoring lifecycle history never reattaches old PIDs or starts commands. See [storage](configuration.md).
 
-Output, lifecycle, and workspace events share a monotonic sequence. Atomic snapshot/subscription and cursor replay prevent gaps on reconnect; slow clients are disconnected. History is bounded and periodically persisted, not a durable log archive. Combined output parses each process/run independently; terminal input always targets one process.
+Output, lifecycle, and workspace events share a monotonic sequence. Atomic snapshot/subscription and cursor replay prevent gaps on reconnect; slow clients are disconnected. History is bounded and periodically persisted, not a durable log archive. Browser log views parse each process/run/stream independently and never send keyboard input. REST/MCP input still targets one process.
 
 Readiness belongs to a specific run and is tracked separately from OS liveness. Workspaces organize commands and browser views; they are not authorization boundaries. REST/MCP discovery remains server-wide.
 

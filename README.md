@@ -1,6 +1,6 @@
 # p-dash
 
-A local dashboard for long-running commands, interactive terminals, combined logs, workspaces, and AI agent access through MCP.
+A local dashboard for long-running commands, log viewing, workspaces, and AI agent access through MCP.
 
 ## Run
 
@@ -27,7 +27,7 @@ mvn
 quarkus:dev
 ```
 
-Set the working directory to the project's absolute path. Open a process tab for interactive input or **Combined stream** for merged output. Commands never start automatically.
+Set the working directory to the project's absolute path. Open a process tab for its logs or **Combined stream** for merged output. Both are read-only; select text and press Ctrl+C to copy. Commands never start automatically.
 
 ## Development
 

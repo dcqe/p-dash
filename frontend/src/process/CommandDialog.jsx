@@ -77,7 +77,7 @@ export default function CommandDialog({ command, cwd, onClose, onSave, onDelete 
           <label>
             Terminal mode
             <select {...field('mode')}>
-              <option value="pty">Interactive terminal</option>
+              <option value="pty">PTY output</option>
               <option value="pipe">Pipes (separate output streams)</option>
             </select>
           </label>
