@@ -705,7 +705,9 @@ h2 {
 .source-legend {
   display: flex;
   gap: 15px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
+  flex: 1;
 }
 .source-legend > span {
   display: flex;
@@ -724,6 +726,7 @@ h2 {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 .search {
   display: flex;
@@ -1022,6 +1025,10 @@ h2 {
     gap: 9px;
     padding: 10px;
   }
+  .source-legend {
+    width: 100%;
+    flex: none;
+  }
   .filter-actions {
     width: 100%;
     justify-content: space-between;
@@ -1152,12 +1159,18 @@ main {
   flex-shrink: 0;
 }
 .terminal-filter {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .source-legend {
   gap: 6px;
-  max-height: 76px;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #626262 #222;
+}
+.source-legend > * {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .source-chip {
   padding: 5px 8px;
