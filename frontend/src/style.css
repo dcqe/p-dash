@@ -407,6 +407,57 @@ h2 {
   border-color: #7a7a7a;
   background: #272727;
 }
+.command-card.starting::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #f6bd16, transparent);
+  pointer-events: none;
+  animation: command-start-sweep 1.4s ease-in-out infinite;
+}
+.command-card.starting .process-symbol {
+  animation: command-start-pulse 1.4s ease-in-out infinite;
+}
+@keyframes command-start-sweep {
+  from { transform: translateX(-100%); opacity: 0; }
+  25%, 75% { opacity: 1; }
+  to { transform: translateX(250%); opacity: 0; }
+}
+@keyframes command-start-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+.command-card.start-ripple {
+  animation: command-start-ripple 850ms ease-out;
+}
+@keyframes command-start-ripple {
+  0% {
+    box-shadow: 0 0 0 0 #ffffff80, 0 0 0 0 #ffffff50;
+  }
+  35% {
+    box-shadow: 0 0 0 5px #ffffff40, 0 0 0 1px #ffffff60;
+  }
+  100% {
+    box-shadow: 0 0 0 13px #ffffff00, 0 0 0 8px #ffffff00;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .command-card.start-ripple {
+    animation-duration: 1ms;
+  }
+  .command-card.starting::after {
+    animation: none;
+    width: 100%;
+    background: #f6bd16;
+    opacity: 0.6;
+  }
+  .command-card.starting .process-symbol {
+    animation: none;
+  }
+}
 .card-top {
   display: flex;
   align-items: center;

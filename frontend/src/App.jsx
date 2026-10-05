@@ -76,6 +76,8 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
   const [sources, setSources] = useState(saved.sources);
   const [dialog, setDialog] = useState(null);
   const [busy, setBusy] = useState(new Set());
+  const [launching, setLaunching] = useState(new Set());
+  const [startRipples, setStartRipples] = useState(new Set());
   const [clearedTabs, setClearedTabs] = useState({});
   const terminalRef = useRef();
   const filterInput = useRef();
@@ -116,12 +118,17 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
   }, [tab, commands, sources]);
   async function action(id, type) {
     setBusy((b) => new Set([...b, id]));
+    if (type === 'start' || type === 'restart') {
+      setLaunching((ids) => new Set([...ids, id]));
+      setStartRipples((ids) => new Set([...ids, id]));
+    }
     try {
       await api(`/commands/${id}/${type}`, 'POST');
     } catch (e) {
       fail(e);
     } finally {
       setBusy((b) => new Set([...b].filter((x) => x !== id)));
+      setLaunching((ids) => new Set([...ids].filter((x) => x !== id)));
     }
   }
   async function batch(type) {
@@ -250,8 +257,13 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
             {visible.map((c) => (
               <article
                 key={c.id}
-                className={`command-card ${tab === c.id ? 'focused' : ''}`}
+                className={`command-card ${tab === c.id ? 'focused' : ''} ${c.status === 'starting' || launching.has(c.id) ? 'starting' : ''} ${startRipples.has(c.id) ? 'start-ripple' : ''}`}
                 style={{ '--accent': c.color }}
+                onAnimationEnd={(event) => {
+                  if (event.target === event.currentTarget && event.animationName === 'command-start-ripple') {
+                    setStartRipples((ids) => new Set([...ids].filter((id) => id !== c.id)));
+                  }
+                }}
               >
                 <div className="card-top">
                   <button className="command-name" onClick={() => setTab(c.id)}>
