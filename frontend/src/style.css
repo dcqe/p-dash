@@ -1227,7 +1227,7 @@ main {
   font-variant-numeric: tabular-nums;
 }
 .filter-actions .pause-control {
-  width: 124px;
+  width: 94px;
   height: 28px;
   flex-shrink: 0;
   border: 1px solid #414141;
@@ -1499,8 +1499,66 @@ main {
   overflow: visible;
   align-items: center;
 }
+.workspace-delete-control {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.workspace-delete-control button:disabled {
+  color: #929292;
+  border-color: #484848;
+  background: #252525;
+  opacity: 0.6;
+}
+.workspace-delete-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 250px;
+  max-width: calc(100vw - 70px);
+  padding: 9px 11px;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 6px;
+  color: #dedede;
+  font-size: 11px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px #0006;
+  pointer-events: none;
+  visibility: hidden;
+  z-index: 1;
+}
+.workspace-delete-control:hover .workspace-delete-tooltip,
+.workspace-delete-control:focus .workspace-delete-tooltip {
+  visibility: visible;
+}
 .command-menu {
   position: relative;
+}
+.terminal-menu-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+.terminal-menu-tools .source-summary {
+  color: #959595;
+  font-size: 9px;
+  white-space: nowrap;
+}
+.terminal-menu-tools .command-menu-panel {
+  left: auto;
+  right: 0;
+}
+.terminal-filter .terminal-tools {
+  padding: 0;
+  gap: 4px;
+}
+@media (max-width: 760px) {
+  .terminal-menu-tools .source-summary {
+    display: none;
+  }
 }
 .terminal-section {
   overflow: visible;

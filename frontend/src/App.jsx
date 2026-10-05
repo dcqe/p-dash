@@ -372,6 +372,12 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                 </div>
               ))}
             </div>
+            <div className="terminal-menu-tools">
+              <CommandMenu commands={commands} selected={merged} onChange={setSources} />
+              <span className="source-summary">{merged.length} of {commands.length} shown</span>
+            </div>
+          </div>
+          <div className="terminal-filter">
             <div className="terminal-tools">
               <CopyOutputButton
                 getLines={(count) => terminalRef.current?.getLines(count) || []}
@@ -392,12 +398,6 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                 <Eraser size={15} />
                 Clear
               </button>
-            </div>
-          </div>
-          <div className="terminal-filter">
-            <div className="source-legend">
-              <CommandMenu commands={commands} selected={merged} onChange={setSources} />
-              <span className="source-summary">{merged.length} of {commands.length} shown</span>
             </div>
             <div className="filter-actions">
                 <label className={`search ${tab !== 'combined' ? 'inactive' : ''}`}>

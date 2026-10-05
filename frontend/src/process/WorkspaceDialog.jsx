@@ -8,6 +8,9 @@ export default function WorkspaceDialog({ workspace, cwd, empty, onClose, onSave
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteBlocked = workspace?.id === 'default'
+    ? 'Default is required for commands created without a workspace and cannot be deleted.'
+    : !empty ? 'Remove all commands from this workspace before deleting it.' : '';
   useEffect(() => {
     const key = (event) => {
       if (event.key === 'Escape' && !busy) onClose();
@@ -113,7 +116,7 @@ export default function WorkspaceDialog({ workspace, cwd, empty, onClose, onSave
               {error}
             </p>
           )}
-          {workspace && workspace.id !== 'default' && (
+          {workspace && (
             <div className="workspace-delete">
               <div className="workspace-delete-copy">
                 <strong>Delete workspace</strong>
@@ -123,14 +126,21 @@ export default function WorkspaceDialog({ workspace, cwd, empty, onClose, onSave
                 </p>
               </div>
               {!confirmDelete ? (
+                <span className="workspace-delete-control" tabIndex={deleteBlocked ? 0 : undefined}
+                  aria-describedby={deleteBlocked ? 'workspace-delete-reason' : undefined}>
                 <button
                   type="button"
                   className="danger-outline"
-                  disabled={busy || !empty}
+                  disabled={busy || !!deleteBlocked}
+                  aria-describedby={deleteBlocked ? 'workspace-delete-reason' : undefined}
                   onClick={() => setConfirmDelete(true)}
                 >
                   Delete workspace
                 </button>
+                {deleteBlocked && <span id="workspace-delete-reason" className="workspace-delete-tooltip" role="tooltip">
+                  {deleteBlocked}
+                </span>}
+                </span>
               ) : (
                 <div className="workspace-delete-confirm">
                   <span>Are you sure? This cannot be undone.</span>
@@ -138,7 +148,7 @@ export default function WorkspaceDialog({ workspace, cwd, empty, onClose, onSave
                     <button type="button" disabled={busy} onClick={() => setConfirmDelete(false)}>
                       Cancel
                     </button>
-                    <button type="button" className="danger" disabled={busy} onClick={remove}>
+                    <button type="button" className="danger" disabled={busy || !!deleteBlocked} onClick={remove}>
                       {busy ? 'Deleting…' : 'Delete'}
                     </button>
                   </div>
