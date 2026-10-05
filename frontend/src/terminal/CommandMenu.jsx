@@ -28,13 +28,14 @@ export default function CommandMenu({ commands, selected, onChange }) {
   }, [open]);
   return (
     <div className="command-menu" ref={host}>
-      <button ref={trigger} className="command-menu-trigger" aria-expanded={open}
+      <button ref={trigger} className="terminal-control command-menu-trigger" aria-expanded={open}
         aria-controls={panelId} onClick={() => setOpen(!open)}>
-        Commands <ChevronDown size={12} />
+        Commands <span className="command-menu-count" aria-label={`${selected.length} of ${commands.length} commands shown`}>{selected.length}/{commands.length}</span>
+        <ChevronDown size={12} />
       </button>
       {open && (
         <div id={panelId} className="command-menu-panel" role="group" aria-label="Terminal commands">
-          <p>Show in tabs and combined stream</p>
+          <p>Available Commands</p>
           <label className="command-menu-all">
             <input type="checkbox" checked={allSelected} disabled={!commands.length}
               ref={(input) => {

@@ -374,18 +374,11 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
             </div>
             <div className="terminal-menu-tools">
               <CommandMenu commands={commands} selected={merged} onChange={setSources} />
-              <span className="source-summary">{merged.length} of {commands.length} shown</span>
             </div>
           </div>
-          <div className="terminal-filter">
-            <div className="terminal-tools">
-              <CopyOutputButton
-                getLines={(count) => terminalRef.current?.getLines(count) || []}
-                onMessage={setToast}
-                onError={fail}
-              />
+          <div className="terminal-toolbar" role="group" aria-label="Terminal controls">
               <button
-                className="text-button"
+                className="terminal-control"
                 aria-label="Clear current terminal output"
                 title="Clear current screen"
                 onClick={() =>
@@ -395,25 +388,11 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                   }))
                 }
               >
-                <Eraser size={15} />
+                <Eraser size={14} />
                 Clear
               </button>
-            </div>
-            <div className="filter-actions">
-                <label className={`search ${tab !== 'combined' ? 'inactive' : ''}`}>
-                  <Search size={13} />
-                  <input
-                    ref={filterInput}
-                    disabled={tab !== 'combined'}
-                    aria-label="Filter combined output"
-                    title="Filter output (Ctrl+F)"
-                    placeholder="Filter output…"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                </label>
               <button
-                className={`text-button pause-control ${paused ? 'paused' : ''}`}
+                className={`terminal-control pause-control ${paused ? 'paused' : ''}`}
                 aria-pressed={atBottom ? paused : undefined}
                 onClick={() => {
                   if (!atBottom) {
@@ -422,10 +401,26 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                   } else setPaused(!paused);
                 }}
               >
-                {!atBottom ? <ArrowDownToLine size={12} /> : paused ? <Play size={12} /> : <Pause size={12} />}
+                {!atBottom ? <ArrowDownToLine size={14} /> : paused ? <Play size={14} /> : <Pause size={14} />}
                 {!atBottom ? 'Scroll down' : paused ? 'Resume' : 'Pause'}
               </button>
-            </div>
+              <CopyOutputButton
+                getLines={(count) => terminalRef.current?.getLines(count) || []}
+                onMessage={setToast}
+                onError={fail}
+              />
+              <label className={`search ${tab !== 'combined' ? 'inactive' : ''}`}>
+                <Search size={14} />
+                <input
+                  ref={filterInput}
+                  disabled={tab !== 'combined'}
+                  aria-label="Filter combined output"
+                  title="Filter output (Ctrl+F)"
+                  placeholder="Filter output…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </label>
           </div>
           <div className="terminal-body">
             <LogPane

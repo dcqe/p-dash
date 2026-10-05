@@ -47,7 +47,7 @@ export default function CopyOutputButton({ getLines, onMessage, onError }) {
           title="Copy last 100 lines"
           onClick={() => copy(100)}
         >
-          <Copy size={15} /> Copy
+          <Copy size={14} /> Copy
         </button>
         <button
           className="copy-toggle"
