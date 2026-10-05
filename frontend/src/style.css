@@ -442,44 +442,26 @@ h2 {
   align-items: center;
   gap: 5px;
   font-size: 9px;
-  color: #939393;
+  color: var(--status-color, #939393);
   text-transform: capitalize;
 }
-.process-aliveness.alive {
-  background: #61ddaa;
-  box-shadow: 0 0 5px #61ddaa55;
-}
-.process-aliveness.not-alive {
-  background: transparent;
-  border: 1px solid #808080;
-}
-.status.starting,
-.status.stopping {
-  color: #f6bd16;
-}
-.status.running {
-  color: #cccccc;
-}
-.status.failed {
-  color: #ababab;
-}
+.status.not_started, .dot.not_started { --status-color: #939393; }
+.status.starting, .dot.starting { --status-color: #f6bd16; }
+.status.running, .dot.running { --status-color: #61ddaa; }
+.status.stopping, .dot.stopping { --status-color: #f6903d; }
+.status.stopped, .dot.stopped { --status-color: #939393; }
+.status.exited, .dot.exited { --status-color: #78b4f8; }
+.status.failed, .dot.failed { --status-color: #ff7875; }
 .dot {
   display: inline-block;
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #808080;
+  background: var(--status-color, #808080);
   flex-shrink: 0;
 }
 .dot.running {
-  background: #cbcbcb;
-  box-shadow: 0 0 6px #cdcdcd33;
-}
-.dot.failed {
-  background: #999999;
-}
-.dot.stopping {
-  background: #c1c1c1;
+  box-shadow: 0 0 6px #61ddaa33;
 }
 .command-card > code {
   font-family: 'Cascadia Code', Consolas, monospace;
@@ -617,6 +599,9 @@ h2 {
   background: #c5c5c5;
 }
 .terminal-tabs button > span:last-child:not(.dot) {
+  min-width: 28px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
   font-size: 8px;
   background: #414141;
   color: #c4c4c4;
@@ -715,12 +700,6 @@ h2 {
   gap: 5px;
   font-size: 9px;
   color: #959595;
-}
-.source-legend i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  display: inline-block;
 }
 .filter-actions {
   display: flex;
@@ -1172,24 +1151,31 @@ main {
   flex-shrink: 0;
   white-space: nowrap;
 }
-.source-chip {
-  padding: 5px 8px;
-  border-radius: 6px;
-  background: #1b1b1b;
-  border: 1px solid #353535;
-  color: #858585;
-  font-size: 10px;
+.terminal-command-tab {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-right: 1px solid #323232;
 }
-.source-chip.included,
-.source-chip[aria-pressed='true'] {
-  background: #303030;
-  border-color: #656565;
-  color: #e0e0e0;
+.terminal-command-tab.selected {
+  background: #2a2a2a;
 }
-.source-chip i {
-  height: 6px;
-  width: 6px;
-  border-radius: 50%;
+.terminal-tabs .terminal-command-tab button {
+  border-right: 0;
+}
+.source-summary {
+  font-variant-numeric: tabular-nums;
+}
+.filter-actions .pause-control {
+  width: 78px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.search.inactive {
+  opacity: 0.45;
+}
+.search input:disabled {
+  cursor: default;
 }
 .workspace-switcher {
   margin: 28px 0 18px;
@@ -1446,3 +1432,81 @@ main {
 .workspace-picker-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-picker-copy strong { font-size: 12px; font-weight: 600; color: #ededed; }
 .workspace-picker-copy small { font-size: 10px; font-weight: 400; color: #aaa; }
+
+.source-legend {
+  overflow: visible;
+  align-items: center;
+}
+.command-menu {
+  position: relative;
+}
+.terminal-section {
+  overflow: visible;
+}
+.terminal-top {
+  border-radius: 8px 8px 0 0;
+}
+.terminal-body {
+  border-radius: 0 0 8px 8px;
+}
+.command-menu-trigger {
+  width: 104px;
+  height: 28px;
+  padding: 4px 10px;
+  justify-content: space-between;
+  border-radius: 5px;
+  font-size: 10px;
+}
+.command-menu-panel {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 10;
+  width: 260px;
+  max-width: calc(100vw - 40px);
+  max-height: 320px;
+  overflow: auto;
+  padding: 6px;
+  background: #242424;
+  border: 1px solid #414141;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px #0008;
+}
+.command-menu-panel p {
+  margin: 6px 8px 10px;
+  font-size: 10px;
+  color: #969696;
+  white-space: normal;
+}
+.command-menu-panel label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.command-menu-panel .command-menu-all {
+  margin-bottom: 4px;
+  border-bottom: 1px solid #414141;
+  border-radius: 4px 4px 0 0;
+  font-weight: 600;
+}
+.command-menu-panel label:hover,
+.command-menu-panel label:focus-within {
+  background: #333;
+}
+.command-menu-panel input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin: 0;
+  accent-color: #d1d1d1;
+  flex-shrink: 0;
+}
+.command-menu-panel label > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -20,6 +20,7 @@ import { useDashboard } from './api/useDashboard.js';
 import { active, ago, statusLabel } from './ui.js';
 import LogPane from './terminal/LogPane.jsx';
 import CopyOutputButton from './terminal/CopyOutputButton.jsx';
+import CommandMenu from './terminal/CommandMenu.jsx';
 import CommandDialog from './process/CommandDialog.jsx';
 import WorkspaceDialog from './process/WorkspaceDialog.jsx';
 import WorkspacePicker from './process/WorkspacePicker.jsx';
@@ -83,8 +84,6 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
   const commands = workspaceCommands(dashboard.commands, workspace.id);
   const visible = commands;
   const merged = streamCommands(commands, sources);
-  const allSourcesSelected =
-    sources === null || (commands.length > 0 && commands.every((c) => sources?.includes(c.id)));
   const events = dashboard.events.filter((e) => commands.some((c) => c.id === e.processId));
   const cwd = workspace.workingDirectory;
   useEffect(() => {
@@ -113,8 +112,8 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
     return () => clearTimeout(t);
   }, [toast]);
   useEffect(() => {
-    if (tab !== 'combined' && !visible.some((c) => c.id === tab)) setTab('combined');
-  }, [tab, commands]);
+    if (tab !== 'combined' && !merged.some((c) => c.id === tab)) setTab('combined');
+  }, [tab, commands, sources]);
   async function action(id, type) {
     setBusy((b) => new Set([...b, id]));
     try {
@@ -336,24 +335,26 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                 <Layers size={14} />
                 Combined stream<span>{merged.length}</span>
               </button>
-              {visible.map((c) => (
-                <button
+              {merged.map((c) => (
+                <div
                   key={c.id}
-                  className={tab === c.id ? 'active' : ''}
-                  onClick={() => setTab(c.id)}
+                  className={`terminal-command-tab ${tab === c.id ? 'selected' : ''}`}
                 >
-                  <span
-                    className={`dot process-aliveness ${c.alive ? 'alive' : 'not-alive'}`}
-                    role="img"
-                    aria-label={`${c.name}: ${c.alive ? 'process alive' : 'no live process'}`}
-                    title={
-                      c.alive
-                        ? 'Process alive (readiness is shown on the command card)'
-                        : 'No live process'
-                    }
-                  />
-                  {c.name}
-                </button>
+                  <button
+                    className={tab === c.id ? 'active' : ''}
+                    aria-pressed={tab === c.id}
+                    onClick={() => setTab(c.id)}
+                    title={`Open ${c.name} logs · ${statusLabel(c.status)}`}
+                  >
+                    <span
+                      className={`dot ${c.status}`}
+                      role="img"
+                      aria-label={`${c.name}: ${statusLabel(c.status)}`}
+                      title={statusLabel(c.status)}
+                    />
+                    {c.name}
+                  </button>
+                </div>
               ))}
             </div>
             <div className="terminal-tools">
@@ -380,61 +381,15 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
           </div>
           <div className="terminal-filter">
             <div className="source-legend">
-              {tab === 'combined' ? (
-                <>
-                  <button
-                    className={`source-chip ${allSourcesSelected ? 'included' : ''}`}
-                    aria-pressed={allSourcesSelected}
-                    onClick={() => setSources(null)}
-                  >
-                    All
-                  </button>
-                  <button
-                    className="source-chip"
-                    onClick={() => setSources(commands.filter((c) => c.alive).map((c) => c.id))}
-                  >
-                    Active now
-                  </button>
-                  <button className="source-chip" onClick={() => setSources([])}>
-                    None
-                  </button>
-                  {visible.map((c) => (
-                    <button
-                      key={c.id}
-                      className={`source-chip ${merged.some((m) => m.id === c.id) ? 'included' : ''}`}
-                      aria-pressed={merged.some((m) => m.id === c.id)}
-                      title={`Include ${c.name} in combined stream`}
-                      onClick={() =>
-                        setSources((prev) => {
-                          const ids = prev === null ? commands.map((c) => c.id) : prev;
-                          return ids.includes(c.id)
-                            ? ids.filter((id) => id !== c.id)
-                            : [...ids, c.id];
-                        })
-                      }
-                    >
-                      <i style={{ background: c.color }} />
-                      {c.name}
-                      <span
-                        className={`dot process-aliveness ${c.alive ? 'alive' : 'not-alive'}`}
-                      />
-                    </button>
-                  ))}
-                  {!merged.length && <span>No command output selected.</span>}
-                </>
-              ) : (
-                <span>
-                  Logs ·{' '}
-                  {commands.find((c) => c.id === tab)?.name}
-                </span>
-              )}
+              <CommandMenu commands={commands} selected={merged} onChange={setSources} />
+              <span className="source-summary">{merged.length} of {commands.length} shown</span>
             </div>
             <div className="filter-actions">
-              {tab === 'combined' && (
-                <label className="search">
+                <label className={`search ${tab !== 'combined' ? 'inactive' : ''}`}>
                   <Search size={13} />
                   <input
                     ref={filterInput}
+                    disabled={tab !== 'combined'}
                     aria-label="Filter combined output"
                     title="Filter output (Ctrl+F)"
                     placeholder="Filter output…"
@@ -442,9 +397,9 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                     onChange={(e) => setQuery(e.target.value)}
                   />
                 </label>
-              )}
               <button
-                className={`text-button ${paused ? 'paused' : ''}`}
+                className={`text-button pause-control ${paused ? 'paused' : ''}`}
+                aria-pressed={paused}
                 onClick={() => setPaused(!paused)}
               >
                 {paused ? <Play size={12} /> : <Pause size={12} />} {paused ? 'Resume' : 'Pause'}
