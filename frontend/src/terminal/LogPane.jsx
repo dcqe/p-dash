@@ -7,16 +7,24 @@ import { lastTerminalLines } from './output.js';
 const CLEAR_SCREEN = '\x1b[?25l\x1b[0m\x1b[2J\x1b[3J\x1b[H';
 
 export default forwardRef(function LogPane(
-  { events, commands, processId, query, paused, clearAfter = null, onError },
+  { events, commands, processId, query, paused, clearAfter = null, onError, onViewportChange },
   ref,
 ) {
   const combined = useRef(new CombinedLines());
   const host = useRef();
   const terminal = useRef();
+  const viewportCallback = useRef(onViewportChange);
+  viewportCallback.current = onViewportChange;
+  const followRequested = useRef(false);
   useImperativeHandle(
     ref,
     () => ({
       getLines: (count) => lastTerminalLines(terminal.current?.buffer.active, count),
+      scrollToBottom: () => {
+        followRequested.current = true;
+        terminal.current?.scrollToBottom();
+        viewportCallback.current?.(true);
+      },
     }),
     [],
   );
@@ -73,6 +81,18 @@ export default forwardRef(function LogPane(
       return true;
     });
     terminal.current = term;
+    viewportCallback.current?.(true);
+    let resizing = false;
+    let viewportAtBottom = true;
+    const scrollListener = term.onScroll(() => {
+      if (!followRequested.current && !resizing) {
+        const buffer = term.buffer.active;
+        viewportAtBottom = buffer.viewportY === buffer.baseY;
+        viewportCallback.current?.(viewportAtBottom);
+      } else if (followRequested.current) {
+        viewportAtBottom = true;
+      }
+    });
     rendered.current = 0;
     initialized.current = false;
     hasLine.current = false;
@@ -80,9 +100,13 @@ export default forwardRef(function LogPane(
     const resize = () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
+        resizing = true;
         try {
           fit.fit();
-        } catch {}
+          if (viewportAtBottom) term.scrollToBottom();
+        } catch {} finally {
+          resizing = false;
+        }
       }, 100);
     };
     const observer = new ResizeObserver(resize);
@@ -91,6 +115,7 @@ export default forwardRef(function LogPane(
     return () => {
       clearTimeout(resizeTimer);
       observer.disconnect();
+      scrollListener.dispose();
       term.dispose();
       terminal.current = null;
     };
@@ -138,6 +163,14 @@ export default forwardRef(function LogPane(
     if (fresh.length) {
       rendered.current = fresh.at(-1).seq;
       initialized.current = true;
+    }
+    if (followRequested.current) {
+      // Wait for queued output to render before following its final line.
+      term.write('', () => {
+        term.scrollToBottom();
+        followRequested.current = false;
+        viewportCallback.current?.(true);
+      });
     }
   }, [events, paused, query, commands, processId, clearAfter]);
   return (

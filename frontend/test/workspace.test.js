@@ -34,9 +34,9 @@ test('views restore separately and tolerate unavailable or corrupt browser stora
     getItem: (key) => data.get(key),
     setItem: (key, value) => data.set(key, value),
   };
-  remember('pdash.view.one', { tab: 'a', query: 'error', paused: true, sources: ['a'] });
-  remember('pdash.view.two', { tab: 'combined', query: '', paused: false, sources: [] });
-  assert.equal(readView('one').query, 'error');
+  remember('pdash.view.one', { tab: 'a', query: 'error', sources: ['a'] });
+  remember('pdash.view.two', { tab: 'combined', query: '', sources: [] });
+  assert.deepEqual(readView('one'), { tab: 'a', query: 'error', sources: ['a'] });
   assert.deepEqual(readView('two').sources, []);
   data.set('pdash.view.one', '{broken');
   assert.equal(readView('one').tab, 'combined');

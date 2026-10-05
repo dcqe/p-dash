@@ -21,13 +21,12 @@ export function readView(id) {
     return {
       tab: typeof value.tab === 'string' ? value.tab : 'combined',
       query: typeof value.query === 'string' ? value.query : '',
-      paused: value.paused === true,
       sources: Array.isArray(value.sources)
         ? value.sources.filter((v) => typeof v === 'string')
         : null,
     };
   } catch {
-    return { tab: 'combined', query: '', paused: false, sources: null };
+    return { tab: 'combined', query: '', sources: null };
   }
 }
 export function remember(key, value) {

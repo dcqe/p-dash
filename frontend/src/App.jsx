@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Eraser,
+  ArrowDownToLine,
   PanelLeftClose,
   PanelLeftOpen,
   Folder,
@@ -72,7 +73,9 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
   const [saved] = useState(() => readView(workspace.id));
   const [tab, setTab] = useState(saved.tab);
   const [query, setQuery] = useState(saved.query);
-  const [paused, setPaused] = useState(saved.paused);
+  const [paused, setPaused] = useState(false);
+  const [atBottom, setAtBottom] = useState(true);
+  const viewportAtBottom = useRef(true);
   const [sources, setSources] = useState(saved.sources);
   const [dialog, setDialog] = useState(null);
   const [busy, setBusy] = useState(new Set());
@@ -105,8 +108,8 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
     filterInput.current?.select();
   }, [filterFocusRequest]);
   useEffect(() => {
-    remember(`pdash.view.${workspace.id}`, { tab, query, paused, sources });
-  }, [tab, query, paused, sources, workspace.id]);
+    remember(`pdash.view.${workspace.id}`, { tab, query, sources });
+  }, [tab, query, sources, workspace.id]);
   const fail = (e) => setToast(e.message || String(e));
   useEffect(() => {
     if (!toast) return;
@@ -411,10 +414,16 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                 </label>
               <button
                 className={`text-button pause-control ${paused ? 'paused' : ''}`}
-                aria-pressed={paused}
-                onClick={() => setPaused(!paused)}
+                aria-pressed={atBottom ? paused : undefined}
+                onClick={() => {
+                  if (!atBottom) {
+                    terminalRef.current?.scrollToBottom();
+                    setPaused(false);
+                  } else setPaused(!paused);
+                }}
               >
-                {paused ? <Play size={12} /> : <Pause size={12} />} {paused ? 'Resume' : 'Pause'}
+                {!atBottom ? <ArrowDownToLine size={12} /> : paused ? <Play size={12} /> : <Pause size={12} />}
+                {!atBottom ? 'Scroll down' : paused ? 'Resume' : 'Pause'}
               </button>
             </div>
           </div>
@@ -427,6 +436,12 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
               processId={tab === 'combined' ? null : tab}
               query={query}
               paused={paused}
+              onViewportChange={(bottom) => {
+                if (!bottom) setPaused(true);
+                else if (!viewportAtBottom.current) setPaused(false);
+                viewportAtBottom.current = bottom;
+                setAtBottom(bottom);
+              }}
               clearAfter={clearedTabs[tab] ?? null}
               onError={fail}
             />

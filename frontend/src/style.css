@@ -763,6 +763,15 @@ h2 {
   align-items: center;
   gap: 6px;
   color: #787878;
+  height: 28px;
+  padding: 0 8px;
+  background: #1b1b1b;
+  border: 1px solid #414141;
+  border-radius: 5px;
+}
+.search:focus-within {
+  border-color: #909090;
+  box-shadow: 0 0 0 1px #909090;
 }
 .search input {
   background: transparent;
@@ -1218,9 +1227,11 @@ main {
   font-variant-numeric: tabular-nums;
 }
 .filter-actions .pause-control {
-  width: 78px;
+  width: 124px;
   height: 28px;
   flex-shrink: 0;
+  border: 1px solid #414141;
+  border-radius: 5px;
 }
 .search.inactive {
   opacity: 0.45;
