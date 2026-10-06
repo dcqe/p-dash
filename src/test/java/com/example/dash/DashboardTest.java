@@ -105,6 +105,63 @@ class DashboardTest {
   }
 
   @Test
+  void activeCommandsAllowOnlyNameAndColorEdits() throws Exception {
+    var c = fixture("ready-on-input");
+    var started = processes.start(c.id());
+    for (var expected : List.of(ProcessStatus.STARTING, ProcessStatus.RUNNING)) {
+      if (expected == ProcessStatus.RUNNING) {
+        processes.input(c.id(), "ready\n");
+        awaitStatus(c.id(), expected);
+      }
+      long cursor = logs.cursor();
+      String name = "Renamed " + expected;
+      given()
+          .header("Authorization", "Bearer " + access.token())
+          .contentType("application/json")
+          .body(Map.of("name", name, "color", "#123abc"))
+          .patch("/api/commands/" + c.id())
+          .then().statusCode(200)
+          .body("name", org.hamcrest.Matchers.equalTo(name))
+          .body("color", org.hamcrest.Matchers.equalTo("#123abc"));
+      var current = processes.status(c.id());
+      assertEquals(expected, current.status());
+      assertTrue(current.alive());
+      assertEquals(started.pid(), current.pid());
+      assertEquals(started.runId(), current.runId());
+      assertEquals(started.startedAt(), current.startedAt());
+      assertEquals(c.command(), processes.definition(c.id()).command());
+      assertEquals(name, processes.definition(c.id()).name());
+      assertTrue(logs.getLogs(Set.of(c.id()), cursor, 1000, false).events().stream()
+          .anyMatch(e -> e.process() instanceof ProcessSnapshot snapshot && name.equals(snapshot.name())));
+      for (var change : List.of(
+          Map.of("command", List.of("different-executable")),
+          Map.of("cwd", Path.of(c.workingDirectory()).getParent().toString()),
+          Map.of("env", Map.of("TEST_OVERRIDE", "value")),
+          Map.of("mode", "pty"),
+          Map.of("readiness", Map.of("mode", "process", "timeoutMs", 120000)))) {
+        given()
+            .header("Authorization", "Bearer " + access.token())
+            .contentType("application/json")
+            .body(change)
+            .patch("/api/commands/" + c.id())
+            .then().statusCode(409);
+      }
+      var deleteError = assertThrows(jakarta.ws.rs.WebApplicationException.class,
+          () -> processes.remove(c.id()));
+      assertEquals(409, deleteError.getResponse().getStatus());
+      assertEquals(current, processes.status(c.id()));
+    }
+    processes.stop(c.id());
+    given()
+        .header("Authorization", "Bearer " + access.token())
+        .contentType("application/json")
+        .body(Map.of("mode", "pty"))
+        .patch("/api/commands/" + c.id())
+        .then().statusCode(200);
+    assertEquals("pty", processes.definition(c.id()).mode());
+  }
+
+  @Test
   void distinguishesNeverStartedAliveStartingReadyAndStopped() throws Exception {
     var c = fixture("ready-on-input");
     assertEquals(ProcessStatus.NOT_STARTED, processes.status(c.id()).status());

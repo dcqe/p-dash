@@ -271,7 +271,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
                   <div className="card-actions">
                     <button
                       className="icon"
-                      disabled={busy.has(c.id) || active(c)}
+                      disabled={busy.has(c.id) || connection !== 'live'}
                       title="Edit command"
                       aria-label={`Edit ${c.name}`}
                       onClick={() => setDialog({ type: 'command', command: c })}
@@ -338,7 +338,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
       )}
       {dialog?.type === 'command' && (
         <CommandDialog
-          command={dialog.command}
+          command={dialog.command ? commands.find((c) => c.id === dialog.command.id) || dialog.command : undefined}
           cwd={cwd}
           onClose={() => setDialog(null)}
           onDelete={() => setDialog({ type: 'delete', command: dialog.command })}
@@ -355,7 +355,8 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
         <WorkspaceDialog
           workspace={dialog.workspace}
           cwd={cwd}
-          empty={!commands.length}
+          commandCount={commands.length}
+          hasActiveCommands={commands.some((c) => c.alive || active(c))}
           onClose={() => setDialog(null)}
           onSaved={(w) => onSwitch(w.id)}
           onDeleted={() => onSwitch('default')}

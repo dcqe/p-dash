@@ -57,8 +57,12 @@ public class ProcessRegistry {
   }
 
   public synchronized void remove(String id) {
-    processes.remove(id);
-    history.remove(id);
+    removeAll(List.of(id));
+  }
+
+  public synchronized void removeAll(Collection<String> ids) {
+    ids.forEach(processes::remove);
+    ids.forEach(history::remove);
     state.write("runtime/lifecycle.json", history.values());
     save();
   }

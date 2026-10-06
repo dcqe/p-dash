@@ -6,13 +6,13 @@ Base URL: `http://127.0.0.1:4310`. REST and MCP require `Authorization: Bearer <
 
 Commands accept `id`, `name`, `command` (argument array), `workingDirectory`, `env`, `color`, `mode` (`pty` or `pipe`), `readiness`, and `workspaceId`. Directories must exist and be absolute. Shell syntax requires an explicit shell: `/bin/bash -lc` on Linux or `cmd.exe /d /s /c` on Windows (also needed for batch files).
 
-Stop before editing/deleting. REST PATCH preserves omitted fields; MCP updates replace the full definition, including environment overrides. Status exposes `cwd` and `envKeys`, never environment values.
+Active commands allow name and color edits; stop before changing launch settings or deleting. REST PATCH preserves omitted fields; MCP updates replace the full definition, including environment overrides. Status exposes `cwd` and `envKeys`, never environment values.
 
 Statuses: `not_started`, `starting`, `running`, `stopping`, `stopped`, `exited`, `failed`. `alive` means OS liveness; `running` means startup readiness passed. Natural exit 0 is `exited`; unexpected nonzero exit is `failed`.
 
 Readiness is `{mode, value, timeoutMs}`: `log` matches RE2, `http` requires 2xx, `process` requires spawn, and `auto` selects a Quarkus startup pattern or READY. Timeout defaults to 120000 ms (range 1000–1800000); failure stops the child.
 
-Workspaces contain `id, name, description, color, workingDirectory`. Names are 1–80 printable characters, descriptions at most 240, colors #rrggbb. Creation defaults to a generated ID, empty description, blue, and the server directory. Commands default to workspace `default` and cannot be reassigned. Only empty, non-default workspaces can be deleted. Discovery and logs span all workspaces.
+Workspaces contain `id, name, description, color, workingDirectory`. Names are 1–80 printable characters, descriptions at most 240, colors #rrggbb. Creation defaults to a generated ID, empty description, blue, and the server directory. Commands default to workspace `default` and cannot be reassigned. Deleting a non-default workspace also removes its saved commands; all must be stopped first. Discovery and logs span all workspaces.
 
 ## MCP
 

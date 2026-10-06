@@ -23,7 +23,7 @@ public class WorkspaceTools {
 
   @Tool(
       name = "delete_workspace",
-      description = "Delete an empty, non-default workspace",
+      description = "Delete a non-default workspace and all its saved commands. All commands must be stopped.",
       structuredContent = true)
   @RunOnVirtualThread
   public Map<String, Boolean> delete(String workspaceId) {

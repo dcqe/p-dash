@@ -48,11 +48,32 @@ public class WorkspaceService {
     get(id);
     if (id.equals("default"))
       throw new WebApplicationException("The default workspace cannot be deleted", 409);
-    if (registry.all().stream().anyMatch(p -> p.config.workspaceId().equals(id)))
-      throw new WebApplicationException("Remove the workspace's commands before deleting it", 409);
-    var next = new LinkedHashMap<>(workspaces);
-    next.remove(id);
-    persist(next);
+    var commands = registry.all().stream().filter(p -> p.config.workspaceId().equals(id)).toList();
+    var reserved = new ArrayList<ManagedProcess>();
+    try {
+      // Reserve stopped definitions under their lifecycle locks before removing any of them.
+      // Creation holds this workspace lock; starts and edits reject reserved definitions.
+      for (var p : commands) {
+        synchronized (p) {
+          if (p.terminal != null)
+            throw new WebApplicationException("Stop all commands in the workspace before deleting it", 409);
+          p.removing = true;
+          reserved.add(p);
+        }
+      }
+      registry.removeAll(commands.stream().map(p -> p.config.id()).toList());
+      for (var p : commands)
+        logs.append("removed", p.config.id(), null, null, null, null, null);
+      var next = new LinkedHashMap<>(workspaces);
+      next.remove(id);
+      persist(next);
+    } finally {
+      for (var p : reserved) {
+        synchronized (p) {
+          p.removing = false;
+        }
+      }
+    }
   }
 
   private void persist(Map<String, Workspace> next) {

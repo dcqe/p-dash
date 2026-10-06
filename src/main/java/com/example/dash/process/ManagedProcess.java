@@ -11,6 +11,7 @@ public final class ManagedProcess {
   public String runId, startedAt, endedAt, error;
   public Integer exitCode;
   public Thread readinessWatcher;
+  public boolean removing;
 
   public ManagedProcess(ProcessConfig config) {
     this.config = config;

@@ -874,6 +874,21 @@ h2 {
   font-size: 11px;
   line-height: 1.6;
 }
+.additional-options {
+  margin: 16px 0;
+  border-top: 1px solid #454545;
+  border-bottom: 1px solid #454545;
+  padding: 12px 0;
+}
+.additional-options summary {
+  cursor: pointer;
+  color: #bdbdbd;
+  font-size: 12px;
+}
+.additional-options summary:focus-visible {
+  outline: 1px solid #b1b1b1;
+  outline-offset: 4px;
+}
 .swatches {
   display: flex;
   gap: 9px;
@@ -899,6 +914,27 @@ h2 {
 }
 .dialog-actions button {
   font-size: 12px;
+}
+.command-launch-settings {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.command-launch-settings:disabled {
+  opacity: 0.6;
+}
+.command-dialog-actions {
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  border-top: 1px solid #454545;
+  padding-top: 18px;
+}
+.command-dialog-save-actions {
+  display: flex;
+  gap: 9px;
+  margin-left: auto;
 }
 .error {
   color: #b1b1b1;

@@ -39,12 +39,20 @@ public class ProcessManager {
   public ProcessSnapshot update(String id, ProcessConfig config) {
     var p = registry.get(id);
     synchronized (p) {
-      ensureStopped(p);
+      ensureRegistered(p);
       if (!id.equals(config.id())) throw new IllegalArgumentException("ID cannot change");
       if (!p.config.workspaceId().equals(config.workspaceId()))
         throw new IllegalArgumentException(
             "A command cannot move between workspaces; create a new definition instead");
-      workspaces.get(config.workspaceId());
+      var previous = p.config;
+      if (p.terminal != null
+          && (!previous.command().equals(config.command())
+              || !previous.workingDirectory().equals(config.workingDirectory())
+              || !previous.env().equals(config.env())
+              || !previous.mode().equals(config.mode())
+              || !previous.readiness().equals(config.readiness())))
+        throw new WebApplicationException(
+            "Only name and color can change while the process is active; stop it to edit launch settings", 409);
       p.config = config;
       registry.save();
       return changed(p);
@@ -54,6 +62,7 @@ public class ProcessManager {
   public void remove(String id) {
     var p = registry.get(id);
     synchronized (p) {
+      ensureRegistered(p);
       ensureStopped(p);
       registry.remove(id);
       logs.append("removed", id, null, null, null, null, null);
@@ -63,6 +72,7 @@ public class ProcessManager {
   public ProcessSnapshot start(String id) {
     var p = registry.get(id);
     synchronized (p) {
+      ensureRegistered(p);
       if (closing) throw new WebApplicationException("Server is shutting down", 409);
       if (p.terminal != null && p.terminal.alive()) return p.snapshot();
       p.status = ProcessStatus.STARTING;
@@ -179,6 +189,13 @@ public class ProcessManager {
   private void ensureStopped(ManagedProcess p) {
     if (p.terminal != null)
       throw new WebApplicationException("Stop the process before editing or deleting", 409);
+  }
+
+  private void ensureRegistered(ManagedProcess p) {
+    if (p.removing)
+      throw new WebApplicationException("The workspace is being deleted", 409);
+    if (registry.get(p.config.id()) != p)
+      throw new jakarta.ws.rs.NotFoundException("Process definition was removed");
   }
 
   private ProcessSnapshot changed(ManagedProcess p) {

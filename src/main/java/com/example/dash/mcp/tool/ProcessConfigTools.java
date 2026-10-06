@@ -22,7 +22,7 @@ public class ProcessConfigTools {
 
   @Tool(
       name = "update_process",
-      description = "Replace a stopped process definition. Supply all fields including env.",
+      description = "Replace a process definition. While active, only name and color may change. Supply all fields including env.",
       structuredContent = true)
   @RunOnVirtualThread
   public ProcessSnapshot update(ProcessConfig config) {
