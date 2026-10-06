@@ -1,3 +1,5 @@
+import { validLayout } from './panes.js';
+
 export function readLastWorkspace() {
   try {
     const id = JSON.parse(localStorage.getItem('pdash.workspace'));
@@ -18,15 +20,17 @@ export function selectedWorkspace(workspaces, id) {
 export function readView(id) {
   try {
     const value = JSON.parse(localStorage.getItem(`pdash.view.${id}`)) || {};
-    return {
-      tab: typeof value.tab === 'string' ? value.tab : 'combined',
-      query: typeof value.query === 'string' ? value.query : '',
-      sources: Array.isArray(value.sources)
-        ? value.sources.filter((v) => typeof v === 'string')
-        : null,
-    };
+    if (!Array.isArray(value.panes) || !value.panes.length || value.panes.some((pane) =>
+      !pane || typeof pane.id !== 'string' || typeof pane.tab !== 'string' ||
+      typeof pane.query !== 'string' || !(pane.sources === null ||
+        (Array.isArray(pane.sources) && pane.sources.every((id) => typeof id === 'string')))) ||
+      new Set(value.panes.map((pane) => pane.id)).size !== value.panes.length ||
+      !validLayout(value.layout, value.panes.map((pane) => pane.id))) {
+      return { panes: [{ id: 'main', tab: 'combined', query: '', sources: null }], layout: 'main' };
+    }
+    return { panes: value.panes, layout: value.layout };
   } catch {
-    return { tab: 'combined', query: '', sources: null };
+    return { panes: [{ id: 'main', tab: 'combined', query: '', sources: null }], layout: 'main' };
   }
 }
 export function remember(key, value) {

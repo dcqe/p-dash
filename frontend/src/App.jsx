@@ -1,17 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Eraser,
-  ArrowDownToLine,
   PanelLeftClose,
   PanelLeftOpen,
   Folder,
-  Layers,
-  Pause,
   Pencil,
   Play,
   Plus,
   RotateCcw,
-  Search,
   Square,
   TerminalSquare,
   X,
@@ -19,9 +14,8 @@ import {
 import { api } from './api/client.js';
 import { useDashboard } from './api/useDashboard.js';
 import { active, ago, statusLabel } from './ui.js';
-import LogPane from './terminal/LogPane.jsx';
-import CopyOutputButton from './terminal/CopyOutputButton.jsx';
-import CommandMenu from './terminal/CommandMenu.jsx';
+import LogView from './terminal/LogView.jsx';
+import { updatePane, splitPane, splitLayout, closeLayout, paneGrid } from './panes.js';
 import CommandDialog from './process/CommandDialog.jsx';
 import WorkspaceDialog from './process/WorkspaceDialog.jsx';
 import WorkspacePicker from './process/WorkspacePicker.jsx';
@@ -31,7 +25,6 @@ import {
   readView,
   remember,
   workspaceCommands,
-  streamCommands,
 } from './workspace.js';
 export default function App() {
   const [toast, setToast] = useState(null);
@@ -71,54 +64,30 @@ export default function App() {
 }
 function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, sidebarExpanded, onToggleSidebar }) {
   const [saved] = useState(() => readView(workspace.id));
-  const [tab, setTab] = useState(saved.tab);
-  const [query, setQuery] = useState(saved.query);
-  const [paused, setPaused] = useState(false);
-  const [atBottom, setAtBottom] = useState(true);
-  const viewportAtBottom = useRef(true);
-  const [sources, setSources] = useState(saved.sources);
+  const [views, setViews] = useState(saved.panes);
+  const [layout, setLayout] = useState(saved.layout);
+  const grid = paneGrid(layout);
+  const [activePane, setActivePane] = useState(saved.panes[0].id);
+  const tab = views.find((view) => view.id === activePane)?.tab;
+  const setTab = (tab) => setViews((current) => updatePane(current, activePane, { tab }));
   const [dialog, setDialog] = useState(null);
   const [busy, setBusy] = useState(new Set());
   const [launching, setLaunching] = useState(new Set());
   const [startRipples, setStartRipples] = useState(new Set());
-  const [clearedTabs, setClearedTabs] = useState({});
-  const terminalRef = useRef();
-  const filterInput = useRef();
-  const [filterFocusRequest, setFilterFocusRequest] = useState(0);
   const { connection, workspaces } = dashboard;
   const commands = workspaceCommands(dashboard.commands, workspace.id);
   const visible = commands;
-  const merged = streamCommands(commands, sources);
   const events = dashboard.events.filter((e) => commands.some((c) => c.id === e.processId));
   const cwd = workspace.workingDirectory;
   useEffect(() => {
-    const focusFilter = (event) => {
-      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'f') {
-        event.preventDefault();
-        setTab('combined');
-        setFilterFocusRequest((request) => request + 1);
-      }
-    };
-    window.addEventListener('keydown', focusFilter, true);
-    return () => window.removeEventListener('keydown', focusFilter, true);
-  }, []);
-  useEffect(() => {
-    if (!filterFocusRequest) return;
-    filterInput.current?.focus();
-    filterInput.current?.select();
-  }, [filterFocusRequest]);
-  useEffect(() => {
-    remember(`pdash.view.${workspace.id}`, { tab, query, sources });
-  }, [tab, query, sources, workspace.id]);
+    remember(`pdash.view.${workspace.id}`, { panes: views, layout });
+  }, [views, layout, workspace.id]);
   const fail = (e) => setToast(e.message || String(e));
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 6000);
     return () => clearTimeout(t);
   }, [toast]);
-  useEffect(() => {
-    if (tab !== 'combined' && !merged.some((c) => c.id === tab)) setTab('combined');
-  }, [tab, commands, sources]);
   async function action(id, type) {
     setBusy((b) => new Set([...b, id]));
     if (type === 'start' || type === 'restart') {
@@ -340,108 +309,24 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
             )}
           </div>
         </section>
-        <section className="terminal-section">
-          <div className="terminal-top">
-            <div className="terminal-tabs">
-              <button
-                className={tab === 'combined' ? 'active' : ''}
-                onClick={() => setTab('combined')}
-              >
-                <Layers size={14} />
-                Combined stream<span>{merged.length}</span>
-              </button>
-              {merged.map((c) => (
-                <div
-                  key={c.id}
-                  className={`terminal-command-tab ${tab === c.id ? 'selected' : ''}`}
-                >
-                  <button
-                    className={tab === c.id ? 'active' : ''}
-                    aria-pressed={tab === c.id}
-                    onClick={() => setTab(c.id)}
-                    title={`Open ${c.name} logs · ${statusLabel(c.status)}`}
-                  >
-                    <span
-                      className={`dot ${c.status}`}
-                      role="img"
-                      aria-label={`${c.name}: ${statusLabel(c.status)}`}
-                      title={statusLabel(c.status)}
-                    />
-                    {c.name}
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="terminal-menu-tools">
-              <CommandMenu commands={commands} selected={merged} onChange={setSources} />
-            </div>
-          </div>
-          <div className="terminal-toolbar" role="group" aria-label="Terminal controls">
-              <button
-                className="terminal-control"
-                aria-label="Clear current terminal output"
-                title="Clear current screen"
-                onClick={() =>
-                  setClearedTabs((prev) => ({
-                    ...prev,
-                    [tab]: dashboard.events.at(-1)?.seq || 0,
-                  }))
-                }
-              >
-                <Eraser size={14} />
-                Clear
-              </button>
-              <button
-                className={`terminal-control pause-control ${paused ? 'paused' : ''}`}
-                aria-pressed={atBottom ? paused : undefined}
-                onClick={() => {
-                  if (!atBottom) {
-                    terminalRef.current?.scrollToBottom();
-                    setPaused(false);
-                  } else setPaused(!paused);
-                }}
-              >
-                {!atBottom ? <ArrowDownToLine size={14} /> : paused ? <Play size={14} /> : <Pause size={14} />}
-                {!atBottom ? 'Scroll down' : paused ? 'Resume' : 'Pause'}
-              </button>
-              <CopyOutputButton
-                getLines={(count) => terminalRef.current?.getLines(count) || []}
-                onMessage={setToast}
-                onError={fail}
-              />
-              <label className={`search ${tab !== 'combined' ? 'inactive' : ''}`}>
-                <Search size={14} />
-                <input
-                  ref={filterInput}
-                  disabled={tab !== 'combined'}
-                  aria-label="Filter combined output"
-                  title="Filter output (Ctrl+F)"
-                  placeholder="Filter output…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </label>
-          </div>
-          <div className="terminal-body">
-            <LogPane
-              ref={terminalRef}
-              key={tab}
-              events={events}
-              commands={tab === 'combined' ? merged : visible}
-              processId={tab === 'combined' ? null : tab}
-              query={query}
-              paused={paused}
-              onViewportChange={(bottom) => {
-                if (!bottom) setPaused(true);
-                else if (!viewportAtBottom.current) setPaused(false);
-                viewportAtBottom.current = bottom;
-                setAtBottom(bottom);
+        <div className="log-views" style={grid.style}>
+          {views.map((view, index) => (
+            <LogView key={view.id} view={view} index={index} style={grid.panes[view.id]} commands={commands} events={events}
+              isActive={view.id === activePane} onActivate={() => setActivePane(view.id)}
+              onChange={(patch) => setViews((current) => updatePane(current, view.id, patch))}
+              onSplit={(direction) => {
+                const id = crypto.randomUUID();
+                setViews((current) => splitPane(current, view.id, id));
+                setLayout((current) => splitLayout(current, view.id, id, direction));
+                setActivePane(id);
               }}
-              clearAfter={clearedTabs[tab] ?? null}
-              onError={fail}
-            />
-          </div>
-        </section>
+              canClose={views.length > 1} onClose={() => {
+                setViews((current) => current.filter((pane) => pane.id !== view.id));
+                setLayout((current) => closeLayout(current, view.id));
+                if (activePane === view.id) setActivePane(views.find((pane) => pane.id !== view.id).id);
+              }} setToast={setToast} />
+          ))}
+        </div>
       </main>
       {toast && (
         <div className="toast" role="status">

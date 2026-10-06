@@ -34,14 +34,16 @@ test('views restore separately and tolerate unavailable or corrupt browser stora
     getItem: (key) => data.get(key),
     setItem: (key, value) => data.set(key, value),
   };
-  remember('pdash.view.one', { tab: 'a', query: 'error', sources: ['a'] });
-  remember('pdash.view.two', { tab: 'combined', query: '', sources: [] });
-  assert.deepEqual(readView('one'), { tab: 'a', query: 'error', sources: ['a'] });
-  assert.deepEqual(readView('two').sources, []);
+  remember('pdash.view.one', { layout: { direction: 'right', first: 'left', second: 'right' }, panes: [{ id: 'left', tab: 'a', query: 'error', sources: ['a'] }, { id: 'right', tab: 'combined', query: '', sources: null }] });
+  remember('pdash.view.two', { layout: 'main', panes: [{ id: 'main', tab: 'combined', query: '', sources: [] }] });
+  assert.deepEqual(readView('one').panes[0], { id: 'left', tab: 'a', query: 'error', sources: ['a'] });
+  assert.equal(readView('one').panes[1].tab, 'combined');
+  assert.deepEqual(readView('one').layout, { direction: 'right', first: 'left', second: 'right' });
+  assert.deepEqual(readView('two').panes[0].sources, []);
   data.set('pdash.view.one', '{broken');
-  assert.equal(readView('one').tab, 'combined');
+  assert.equal(readView('one').panes[0].tab, 'combined');
   delete globalThis.localStorage;
-  assert.equal(readView('one').sources, null);
+  assert.equal(readView('one').panes[0].sources, null);
   assert.doesNotThrow(() => remember('x', {}));
 });
 
