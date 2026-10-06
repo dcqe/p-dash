@@ -11,6 +11,32 @@ import java.util.*;
 @Consumes(MediaType.APPLICATION_JSON)
 public class WorkspaceResource {
   @Inject WorkspaceService workspaces;
+  @Inject com.fasterxml.jackson.databind.ObjectMapper mapper;
+
+  @GET
+  @Path("/{id}/config")
+  public WorkspaceConfig exportConfig(@PathParam("id") String id) {
+    return workspaces.exportConfig(id);
+  }
+
+  @GET
+  @Path("/{id}/config/path")
+  public Map<String, String> configPath(@PathParam("id") String id) {
+    return Map.of("path", workspaces.configPath(id));
+  }
+
+  @POST
+  @Path("/{id}/config/open")
+  public Map<String, Boolean> openConfig(@PathParam("id") String id) {
+    workspaces.openConfig(id);
+    return Map.of("ok", true);
+  }
+
+  @POST
+  @Path("/import")
+  public Workspace importConfig(com.fasterxml.jackson.databind.JsonNode body) {
+    return workspaces.importConfig(WorkspaceConfig.parse(body, mapper));
+  }
 
   @GET
   public List<Workspace> list() {

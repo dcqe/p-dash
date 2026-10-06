@@ -56,6 +56,15 @@ public class ProcessRegistry {
     save();
   }
 
+  public synchronized void importWorkspace(WorkspaceConfig document) {
+    for (var command : document.commands())
+      if (processes.containsKey(command.id()))
+        throw new jakarta.ws.rs.WebApplicationException("Command ID already exists: " + command.id(), 409);
+    state.importWorkspace(document);
+    for (var command : document.commands())
+      processes.put(command.id(), new ManagedProcess(command));
+  }
+
   public synchronized void remove(String id) {
     removeAll(List.of(id));
   }

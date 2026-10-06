@@ -45,6 +45,9 @@ All paths below start with `/api`.
 | POST | `/commands/{id}/input`, `/commands/{id}/resize` | Input `{data}` / size `{cols, rows}` |
 | GET / POST | `/workspaces` | List / create |
 | PUT / DELETE | `/workspaces/{id}` | Replace settings / delete |
+| GET | `/workspaces/{id}/config` | Export workspace JSON, including command environment values |
+| GET / POST | `/workspaces/{id}/config/path` (GET), `/workspaces/{id}/config/open` (POST) | Actual config path / open in the server desktop's default application |
+| POST | `/workspaces/import` | Import `{version:1, workspace, commands}` as a new workspace; existing IDs return 409; commands stay stopped |
 | GET | `/logs?ids=a,b&after=0&limit=2000&plain=true` | Retained events |
 | GET | `/logs/search?id=a&regex=ERROR&after=0&limit=100` | Search |
 | POST | `/logs/wait` | `{processId, regex, afterCursor, timeoutMs}` |

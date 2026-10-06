@@ -1,6 +1,6 @@
 # Features
 
-- **Workspaces:** organize commands by project, with a default working directory and separate browser view preferences. Switching workspaces leaves processes running; batch controls apply to the current workspace.
+- **Workspaces:** organize commands by project, with a default working directory and separate browser view preferences. Import/export a workspace and its commands as JSON; settings show the shared config file path and can open it. Switching workspaces leaves processes running; batch controls apply to the current workspace.
 - **Process control:** create, edit, start, stop, and restart commands using PTY or pipe mode. Definitions and lifecycle history persist; commands start only on request.
 - **Startup readiness:** use a log pattern, HTTP response, or successful spawn to decide when a command is ready. A startup timeout stops the process; readiness is not continuous health monitoring.
 - **Log viewer:** split logs into independent side-by-side panes, each showing a process or combined stream with its own sources, filter, pause, and clear controls. Pane selections persist per workspace; text selection and Ctrl+C copy remain read-only.

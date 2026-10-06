@@ -28,6 +28,42 @@ public class WorkspaceService {
     return List.copyOf(workspaces.values());
   }
 
+  public synchronized Workspace importConfig(WorkspaceConfig document) {
+    var workspace = document.workspace();
+    if (workspaces.containsKey(workspace.id()))
+      throw new WebApplicationException("Workspace ID already exists: " + workspace.id(), 409);
+    registry.importWorkspace(document);
+    workspaces.put(workspace.id(), workspace);
+    logs.append("workspaces", null, null, null, null, null, list());
+    for (var command : document.commands())
+      logs.append("state", command.id(), null, null, null, registry.get(command.id()).snapshot(), null);
+    return workspace;
+  }
+
+  public synchronized WorkspaceConfig exportConfig(String id) {
+    return new WorkspaceConfig(1, get(id),
+        Arrays.stream(state.readConfig("commands", ProcessConfig[].class))
+            .filter(command -> command.workspaceId().equals(id)).toList());
+  }
+
+  public synchronized String configPath(String id) {
+    get(id);
+    return state.file("config.json").toString();
+  }
+
+  public synchronized void openConfig(String id) {
+    var path = configPath(id);
+    try {
+      String os = System.getProperty("os.name");
+      if (os.startsWith("Windows"))
+        new ProcessBuilder("rundll32.exe", "url.dll,FileProtocolHandler", path).start();
+      else
+        new ProcessBuilder(os.startsWith("Mac") ? "open" : "xdg-open", path).start();
+    } catch (java.io.IOException e) {
+      throw new WebApplicationException("Could not open the config file; open it using the displayed path.", 500);
+    }
+  }
+
   public synchronized Workspace get(String id) {
     var workspace = workspaces.get(id);
     if (workspace == null) throw new NotFoundException("Workspace not found: " + id);

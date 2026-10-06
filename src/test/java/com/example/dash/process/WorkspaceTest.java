@@ -24,6 +24,60 @@ class WorkspaceTest {
   @Inject LogService logs;
 
   @Test
+  void workspaceJsonRoundTripsAndConflictsLeaveFilesUntouched() throws Exception {
+    var workspace = new Workspace(UUID.randomUUID().toString(), "Portable", "JSON", null, null);
+    var command = new ProcessConfig(UUID.randomUUID().toString(), "Imported",
+        List.of("java", "-version"), workspace.workingDirectory(), Map.of("EXAMPLE", "value"),
+        null, "pipe", null, workspace.id());
+    var document = new WorkspaceConfig(1, workspace, List.of(command));
+    String token = "Bearer " + access.token();
+    try {
+      given().header("Authorization", token).contentType("application/json").body(document)
+          .post("/api/workspaces/import").then().statusCode(200);
+      assertEquals(ProcessStatus.NOT_STARTED, processes.status(command.id()).status());
+      assertFalse(processes.status(command.id()).alive());
+      assertEquals(document, workspaces.exportConfig(workspace.id()));
+      var saved = mapper.readTree(state.file("config.json").toFile());
+      assertEquals(1, saved.path("version").asInt());
+      assertTrue(saved.path("workspaces").isArray());
+      assertTrue(saved.path("commands").isArray());
+      assertFalse(java.nio.file.Files.exists(state.file("workspaces/" + workspace.id() + ".json")));
+      var exported = given().header("Authorization", token)
+          .get("/api/workspaces/" + workspace.id() + "/config").then().statusCode(200)
+          .extract().as(WorkspaceConfig.class);
+      assertEquals(document, exported);
+      var invalid = mapper.valueToTree(document);
+      ((com.fasterxml.jackson.databind.node.ObjectNode) invalid.path("commands").get(0)).remove("id");
+      given().header("Authorization", token).contentType("application/json").body(invalid)
+          .post("/api/workspaces/import").then().statusCode(400);
+      ((com.fasterxml.jackson.databind.node.ObjectNode) invalid).put("version", 99);
+      given().header("Authorization", token).contentType("application/json").body(invalid)
+          .post("/api/workspaces/import").then().statusCode(400);
+      given().header("Authorization", token).get("/api/workspaces/" + workspace.id() + "/config/path")
+          .then().statusCode(200).body("path", org.hamcrest.Matchers.equalTo(state.file("config.json").toString()));
+      var before = java.nio.file.Files.readString(state.file("config.json"));
+      given().header("Authorization", token).contentType("application/json").body(document)
+          .post("/api/workspaces/import").then().statusCode(409);
+      assertEquals(before, java.nio.file.Files.readString(state.file("config.json")));
+      var other = new Workspace(UUID.randomUUID().toString(), "Conflict", "", null, null);
+      var collision = new ProcessConfig(command.id(), command.name(), command.command(),
+          command.workingDirectory(), command.env(), command.color(), command.mode(), command.readiness(), other.id());
+      given().header("Authorization", token).contentType("application/json")
+          .body(new WorkspaceConfig(1, other, List.of(collision)))
+          .post("/api/workspaces/import").then().statusCode(409);
+      assertEquals(before, java.nio.file.Files.readString(state.file("config.json")));
+      workspaces.delete(workspace.id());
+      assertTrue(java.nio.file.Files.exists(state.file("config.json")));
+      given().header("Authorization", token).contentType("application/json").body(exported)
+          .post("/api/workspaces/import").then().statusCode(200);
+      assertEquals(document, workspaces.exportConfig(workspace.id()));
+    } finally {
+      if (workspaces.list().stream().anyMatch(w -> w.id().equals(workspace.id())))
+        workspaces.delete(workspace.id());
+    }
+  }
+
+  @Test
   void definitionsRemainIsolatedAndWorkspaceSettingsPersist() throws Exception {
     var w = workspaces.save(null, new Workspace(null, "Separate project", "Test", "#5B8FF9", null));
     String id = UUID.randomUUID().toString();

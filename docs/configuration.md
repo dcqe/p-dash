@@ -2,6 +2,8 @@
 
 Settings, workspaces, and command definitions live in `.pdash/config.json`. UI/API edits save there. Stop p-dash before editing it manually, then restart. Keep the data directory private: command environment values and credentials may contain secrets.
 
+Workspace settings show the absolute config path with an Open file button. Export JSON downloads `{version:1, workspace, commands}` for the selected workspace, including environment overrides. Import JSON adds that workspace to the shared config, rejects existing workspace or command IDs, and never starts commands.
+
 `PDASH_DATA` selects another data directory. Use an absolute path outside the installation to retain state when replacing a packaged build.
 
 ## Configuration

@@ -106,6 +106,16 @@ public class LocalState {
     config = next;
   }
 
+  public synchronized void importWorkspace(com.example.dash.process.WorkspaceConfig document) {
+    var next = config.deepCopy();
+    ((com.fasterxml.jackson.databind.node.ArrayNode) next.get("workspaces"))
+        .add(mapper.valueToTree(document.workspace()));
+    var commands = (com.fasterxml.jackson.databind.node.ArrayNode) next.get("commands");
+    for (var command : document.commands()) commands.add(mapper.valueToTree(command));
+    write("config.json", next);
+    config = next;
+  }
+
   public boolean demoEnabled() { return config.path("settings").path("demoEnabled").asBoolean(); }
 
   @jakarta.annotation.PreDestroy

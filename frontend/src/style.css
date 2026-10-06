@@ -488,6 +488,24 @@ h2 {
   align-items: center;
   color: var(--accent);
 }
+.workspace-config {
+  border-top: 1px solid #393939;
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.workspace-config-path {
+  display: block;
+  overflow-wrap: anywhere;
+  user-select: text;
+  margin-top: 10px;
+  font-size: 12px;
+}
+.workspace-config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 .status {
   display: flex;
   align-items: center;
@@ -1508,7 +1526,10 @@ main {
   overflow: visible;
 }
 .terminal-top {
-  border-radius: 8px 8px 0 0;
+  border-radius: 7px 7px 0 0;
+}
+.terminal-tabs {
+  border-top-left-radius: 7px;
 }
 .terminal-body {
   border-radius: 0 0 8px 8px;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { api } from '../api/client.js';
 export default function WorkspaceDialog({
@@ -16,6 +16,48 @@ export default function WorkspaceDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [configPath, setConfigPath] = useState('');
+  const [showJsonImport, setShowJsonImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const importInput = useRef();
+  useEffect(() => {
+    if (!workspace) return;
+    let cancelled = false;
+    api(`/workspaces/${workspace.id}/config/path`)
+      .then(({ path }) => { if (!cancelled) setConfigPath(path); })
+      .catch((e) => { if (!cancelled) setError(e.message); });
+    return () => { cancelled = true; };
+  }, [workspace?.id]);
+
+  async function configAction(action) {
+    setBusy(true);
+    setError('');
+    try { await action(); }
+    catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+
+  async function exportConfig() {
+    const document = await api(`/workspaces/${workspace.id}/config`);
+    const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2) + '\n'], { type: 'application/json' }));
+    const link = window.document.createElement('a');
+    link.href = url;
+    link.download = `${workspace.id}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function importConfig(source) {
+    await configAction(async () => {
+      const text = typeof source === 'string' ? source : await source.text();
+      let document;
+      try { document = JSON.parse(text); }
+      catch { throw new Error('Invalid JSON. Check the pasted text or file and try again.'); }
+      const result = await api('/workspaces/import', 'POST', document);
+      onSaved(result);
+      onClose();
+    });
+  }
   const deleteBlocked =
     workspace?.id === 'default'
       ? 'Default is required for commands created without a workspace and cannot be deleted.'
@@ -122,6 +164,45 @@ export default function WorkspaceDialog({
             Default directory for new commands. Existing commands are unchanged. Switching
             workspaces does not stop processes.
           </p>
+          <div className="workspace-config">
+            <strong>Configuration and workspace JSON</strong>
+            {workspace && <>
+              <code className="workspace-config-path">{configPath || 'Loading config path…'}</code>
+              <p className="muted">This config file contains all workspaces. Stop p-dash before editing it manually, then restart.</p>
+            </>}
+            <div className="workspace-config-actions">
+              {workspace && <>
+                <button type="button" disabled={busy || !configPath}
+                  onClick={() => configAction(() => api(`/workspaces/${workspace.id}/config/open`, 'POST'))}>
+                  Open file
+                </button>
+                <button type="button" disabled={busy} onClick={() => configAction(exportConfig)}>Export JSON</button>
+              </>}
+              <button type="button" disabled={busy} onClick={() => importInput.current.click()}>Import JSON file</button>
+              <button type="button" disabled={busy} aria-expanded={showJsonImport}
+                onClick={() => setShowJsonImport(!showJsonImport)}>Paste JSON</button>
+                <input ref={importInput} hidden type="file" accept=".json,application/json" disabled={busy}
+                  aria-label="Import workspace JSON file"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    if (file) importConfig(file);
+                  }} />
+            </div>
+            {showJsonImport && <div>
+              <label>
+                Workspace JSON
+                <textarea autoFocus rows={8} spellCheck={false} disabled={busy}
+                  placeholder="Paste exported workspace JSON here"
+                  value={importText} onChange={(event) => setImportText(event.target.value)} />
+              </label>
+              <button type="button" disabled={busy || !importText.trim()}
+                onClick={() => importConfig(importText)}>
+                {busy ? 'Importing…' : 'Import pasted JSON'}
+              </button>
+            </div>}
+            <p className="muted">Import adds a workspace with its saved commands, without starting them. Existing IDs are rejected. Export includes command environment values.</p>
+          </div>
           {error && (
             <p className="error" role="alert">
               {error}
