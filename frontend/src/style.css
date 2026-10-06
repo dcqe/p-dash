@@ -492,7 +492,7 @@ h2 {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--status-color, #939393);
   text-transform: capitalize;
 }
@@ -505,14 +505,15 @@ h2 {
 .status.failed, .dot.failed { --status-color: #ff7875; }
 .dot {
   display: inline-block;
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--status-color, #808080);
   flex-shrink: 0;
 }
-.dot.running {
-  box-shadow: 0 0 6px #61ddaa33;
+.dot:is(.starting, .running, .stopping, .failed) {
+  box-shadow: 0 0 4px color-mix(in srgb, var(--status-color) 80%, transparent),
+    0 0 10px color-mix(in srgb, var(--status-color) 45%, transparent);
 }
 .command-card > code {
   font-family: 'Cascadia Code', Consolas, monospace;
