@@ -5,7 +5,7 @@ import LogPane from './LogPane.jsx';
 import CopyOutputButton from './CopyOutputButton.jsx';
 import LogViewHeader from './LogViewHeader.jsx';
 
-export default function LogView({ view, onChange, commands, events, isActive, index, style, onActivate, onSplit, onClose, canClose, setToast }) {
+export default function LogView({ view, onChange, commands, events, clearAfter = null, isActive, index, style, onActivate, onSplit, onClose, canClose, setToast }) {
   const { tab, query, sources } = view;
   const setTab = (tab) => onChange({ tab });
   const setQuery = (query) => onChange({ query });
@@ -110,7 +110,7 @@ export default function LogView({ view, onChange, commands, events, isActive, in
                 viewportAtBottom.current = bottom;
                 setAtBottom(bottom);
               }}
-              clearAfter={clearedTabs[tab] ?? null}
+              clearAfter={clearAfter === null ? clearedTabs[tab] ?? null : Math.max(clearAfter, clearedTabs[tab] ?? 0)}
               onError={fail}
             />
           </div>

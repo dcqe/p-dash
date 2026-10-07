@@ -74,6 +74,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
   const [busy, setBusy] = useState(new Set());
   const [launching, setLaunching] = useState(new Set());
   const [startRipples, setStartRipples] = useState(new Set());
+  const [clearAfter, setClearAfter] = useState(null);
   const { connection, workspaces } = dashboard;
   const commands = workspaceCommands(dashboard.commands, workspace.id);
   const visible = commands;
@@ -104,6 +105,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
     }
   }
   async function batch(type) {
+    if (type === 'restart') setClearAfter(events.at(-1)?.seq ?? 0);
     await Promise.all(visible.map((c) => action(c.id, type)));
   }
   async function remove(c) {
@@ -312,6 +314,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
         <div className="log-views" style={grid.style}>
           {views.map((view, index) => (
             <LogView key={view.id} view={view} index={index} style={grid.panes[view.id]} commands={commands} events={events}
+              clearAfter={clearAfter}
               isActive={view.id === activePane} onActivate={() => setActivePane(view.id)}
               onChange={(patch) => setViews((current) => updatePane(current, view.id, patch))}
               onSplit={(direction) => {
