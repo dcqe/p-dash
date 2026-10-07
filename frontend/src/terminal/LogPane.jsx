@@ -144,6 +144,7 @@ export default forwardRef(function LogPane(
       term.write(`${hasLine.current ? '\r\n' : ''}${line}`);
       hasLine.current = true;
     };
+    const nameWidth = commands.reduce((width, c) => Math.max(width, (c.name || 'process').length), 0);
     for (const event of fresh) {
       const c = processes.current.find((c) => c.id === event.processId);
       const rgb = (c?.color || '#bcbcbc').match(/\w\w/g).map((n) => parseInt(n, 16));
@@ -156,7 +157,7 @@ export default forwardRef(function LogPane(
         if (processId) appendLine(`${line}\x1b[0m`);
         else
           appendLine(
-            `\x1b[0m${/^\d{1,2}:\d{2}:\d{2}(?:\.\d+)?\b/.test(plain(line).trim()) ? '' : `\x1b[38;2;105;105;105m${new Date(event.time).toLocaleTimeString('en-GB')}\x1b[0m  `}\x1b[38;2;${rgb.join(';')}m${(c?.name || 'process').padEnd(17)}\x1b[0m  ${line}\x1b[0m`,
+            `\x1b[0m${/^\d{1,2}:\d{2}:\d{2}(?:\.\d+)?\b/.test(plain(line).trim()) ? '' : `\x1b[38;2;105;105;105m${new Date(event.time).toLocaleTimeString('en-GB')}\x1b[0m  `}\x1b[38;2;${rgb.join(';')}m${(c?.name || 'process').padEnd(nameWidth)}\x1b[0m  ${line}\x1b[0m`,
           );
       }
     }
