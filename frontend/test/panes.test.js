@@ -56,3 +56,18 @@ test('split down then right supports a wide top pane over two lower panes', () =
   assert.deepEqual(paneGrid(mixed).panes['bottom-right'], { gridColumn: '2 / 3', gridRow: '2 / 3' });
   assert.equal(validLayout({ direction: 'diagonal', first: 'top', second: 'bottom' }, ['top', 'bottom']), false);
 });
+
+test('repeated splits preserve proportions when tracks reach their minimum size', () => {
+  const columns = splitLayout(splitLayout('left', 'left', 'right', 'right'), 'right', 'far-right', 'right');
+  const grid = paneGrid(columns);
+  assert.equal(grid.style.gridTemplateColumns,
+    'minmax(640px, 0.5fr) minmax(320px, 0.25fr) minmax(320px, 0.25fr)');
+  assert.deepEqual(grid.panes, {
+    left: { gridColumn: '1 / 2', gridRow: '1 / 2' },
+    right: { gridColumn: '2 / 3', gridRow: '1 / 2' },
+    'far-right': { gridColumn: '3 / 4', gridRow: '1 / 2' },
+  });
+  const rows = splitLayout(splitLayout('top', 'top', 'bottom', 'down'), 'bottom', 'last', 'down');
+  assert.equal(paneGrid(rows).style.gridTemplateRows,
+    'minmax(360px, 0.5fr) minmax(180px, 0.25fr) minmax(180px, 0.25fr)');
+});

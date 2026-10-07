@@ -51,8 +51,12 @@ export function paneGrid(layout) {
   visit(layout, 0, 0, 1, 1);
   const xs = [...new Set(rectangles.flatMap((r) => [r.x, r.right]))].sort((a, b) => a - b);
   const ys = [...new Set(rectangles.flatMap((r) => [r.y, r.bottom]))].sort((a, b) => a - b);
-  const tracks = (values, min) => values.slice(1).map((value, i) =>
-    `minmax(${min}px, ${value - values[i]}fr)`).join(' ');
+  const tracks = (values, min) => {
+    const weights = values.slice(1).map((value, i) => value - values[i]);
+    const smallest = Math.min(...weights);
+    return weights.map((weight) =>
+      `minmax(${min * weight / smallest}px, ${weight}fr)`).join(' ');
+  };
   return {
     style: { gridTemplateColumns: tracks(xs, 320), gridTemplateRows: tracks(ys, 180) },
     panes: Object.fromEntries(rectangles.map((r) => [r.id, {

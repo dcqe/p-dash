@@ -523,15 +523,23 @@ h2 {
 .status.failed, .dot.failed { --status-color: #ff7875; }
 .dot {
   display: inline-block;
+  position: relative;
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--status-color, #808080);
   flex-shrink: 0;
 }
-.dot:is(.starting, .running, .stopping, .failed) {
-  box-shadow: 0 0 4px color-mix(in srgb, var(--status-color) 80%, transparent),
-    0 0 10px color-mix(in srgb, var(--status-color) 45%, transparent);
+.dot:is(.starting, .running, .stopping, .failed)::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--status-color) 30%, transparent) 0%,
+    color-mix(in srgb, var(--status-color) 12%, transparent) 30%,
+    transparent 70%);
 }
 .command-card > code {
   font-family: 'Cascadia Code', Consolas, monospace;
