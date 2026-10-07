@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import {
   PanelLeftClose,
   PanelLeftOpen,
@@ -17,6 +18,7 @@ import { active, ago, statusLabel } from './ui.js';
 import LogView from './terminal/LogView.jsx';
 import { updatePane, splitPane, splitLayout, closeLayout, paneGrid } from './panes.js';
 import CommandDialog from './process/CommandDialog.jsx';
+import { restartAll } from './process/restartAll.js';
 import WorkspaceDialog from './process/WorkspaceDialog.jsx';
 import WorkspacePicker from './process/WorkspacePicker.jsx';
 import {
@@ -89,24 +91,33 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
     const t = setTimeout(() => setToast(null), 6000);
     return () => clearTimeout(t);
   }, [toast]);
-  async function action(id, type) {
-    setBusy((b) => new Set([...b, id]));
-    if (type === 'start' || type === 'restart') {
-      setLaunching((ids) => new Set([...ids, id]));
-      setStartRipples((ids) => new Set([...ids, id]));
-    }
+  function launch(id) {
+    setLaunching((ids) => new Set([...ids, id]));
+    setStartRipples((ids) => new Set([...ids, id]));
+  }
+  async function withBusy(ids, operation) {
+    const targets = new Set(ids);
+    setBusy((current) => new Set([...current, ...targets]));
     try {
-      await api(`/commands/${id}/${type}`, 'POST');
+      await operation();
     } catch (e) {
       fail(e);
     } finally {
-      setBusy((b) => new Set([...b].filter((x) => x !== id)));
-      setLaunching((ids) => new Set([...ids].filter((x) => x !== id)));
+      setBusy((current) => new Set([...current].filter((id) => !targets.has(id))));
+      setLaunching((current) => new Set([...current].filter((id) => !targets.has(id))));
     }
   }
+  async function action(id, type) {
+    await withBusy([id], () => {
+      if (type === 'start' || type === 'restart') launch(id);
+      return api(`/commands/${id}/${type}`, 'POST');
+    });
+  }
   async function batch(type) {
-    if (type === 'restart') setClearAfter(events.at(-1)?.seq ?? 0);
-    await Promise.all(visible.map((c) => action(c.id, type)));
+    if (type !== 'restart') return Promise.all(visible.map((c) => action(c.id, type)));
+    await withBusy(visible.map((c) => c.id), () =>
+      restartAll(visible, api, (cursor) => flushSync(() => setClearAfter(cursor)), launch),
+    );
   }
   async function remove(c) {
     try {
@@ -200,7 +211,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
             <div>
               <button
                 className="text-button"
-                disabled={!visible.length || connection !== 'live'}
+                disabled={!visible.length || connection !== 'live' || visible.some((c) => busy.has(c.id))}
                 onClick={() => batch('start')}
               >
                 <Play size={13} />
@@ -219,7 +230,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
               <span className="divider" />
               <button
                 className="text-button"
-                disabled={!visible.some(active)}
+                disabled={!visible.some(active) || visible.some((c) => busy.has(c.id))}
                 onClick={() => batch('stop')}
               >
                 <Square size={12} />
