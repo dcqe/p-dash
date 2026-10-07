@@ -1689,19 +1689,14 @@ main {
 }
 .log-views > .active-pane { border-color: #888; }
 .log-views .terminal-top { flex-wrap: nowrap; min-height: 38px; }
-.terminal-top { position: relative; }
+.terminal-top { position: relative; container: terminal-header / inline-size; }
 .terminal-full-navigation { display: flex; flex: 1; min-width: 0; }
 .terminal-source-tools { display: flex; align-items: center; flex-shrink: 0; padding: 4px 6px; }
-.compact-tabs .terminal-full-navigation {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
-  pointer-events: none;
+.terminal-view-picker { display: none; align-items: center; flex: 1; min-width: 0; padding: 4px 6px; }
+@container terminal-header (max-width: 500px) {
+  .terminal-full-navigation { display: none; }
+  .terminal-view-picker { display: flex; }
 }
-.compact-tabs .terminal-full-navigation .terminal-tabs { flex: none; }
-.terminal-view-picker { display: flex; align-items: center; flex: 1; min-width: 0; padding: 4px 6px; }
 .terminal-view-picker select {
   width: 100%;
   min-width: 0;
@@ -1715,7 +1710,15 @@ main {
   font-size: 11px;
 }
 .terminal-view-picker select:focus-visible { outline: 2px solid #a0a0a0; }
-.log-views .terminal-tabs { flex: 1 1 0; min-width: 0; }
+.log-views .terminal-tabs {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior: contain;
+}
+.log-views .terminal-tabs button { min-height: 38px; padding: 8px 12px; }
 .log-views .terminal-menu-tools { gap: 4px; padding: 4px 6px; }
 .log-views .terminal-menu-tools > .icon { position: relative; width: 26px; height: 26px; }
 .log-views .terminal-menu-tools > .icon::before {
