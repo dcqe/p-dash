@@ -80,6 +80,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
   const { connection, workspaces } = dashboard;
   const commands = workspaceCommands(dashboard.commands, workspace.id);
   const visible = commands;
+  const startable = visible.filter((c) => !active(c) && !c.alive && !launching.has(c.id));
   const events = dashboard.events.filter((e) => commands.some((c) => c.id === e.processId));
   const cwd = workspace.workingDirectory;
   useEffect(() => {
@@ -114,7 +115,10 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
     });
   }
   async function batch(type) {
-    if (type !== 'restart') return Promise.all(visible.map((c) => action(c.id, type)));
+    if (type !== 'restart') {
+      const targets = type === 'start' ? startable : visible;
+      return Promise.all(targets.map((c) => action(c.id, type)));
+    }
     await withBusy(visible.map((c) => c.id), () =>
       restartAll(visible, api, (cursor) => flushSync(() => setClearAfter(cursor)), launch),
     );
@@ -211,7 +215,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
             <div>
               <button
                 className="text-button"
-                disabled={!visible.length || connection !== 'live' || visible.some((c) => busy.has(c.id))}
+                disabled={!startable.length || connection !== 'live' || visible.some((c) => busy.has(c.id))}
                 onClick={() => batch('start')}
               >
                 <Play size={13} />
