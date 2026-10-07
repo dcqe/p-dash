@@ -1717,6 +1717,12 @@ main {
 .terminal-view-picker select:focus-visible { outline: 2px solid #a0a0a0; }
 .log-views .terminal-tabs { flex: 1 1 0; min-width: 0; }
 .log-views .terminal-menu-tools { gap: 4px; padding: 4px 6px; }
-.log-views .terminal-menu-tools > .icon { width: 26px; height: 26px; }
+.log-views .terminal-menu-tools > .icon { position: relative; width: 26px; height: 26px; }
+.log-views .terminal-menu-tools > .icon::before {
+  content: '';
+  position: absolute;
+  inset: -4px -2px;
+}
+.log-views .terminal-menu-tools > .icon:first-child::before { left: -10px; }
 .log-views .terminal-toolbar { gap: 6px; padding: 5px 8px; }
 .log-views .search input { min-width: 0; width: 100%; }
