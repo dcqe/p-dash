@@ -206,9 +206,9 @@ public class ProcessManager {
   }
 
   private void cancelReadiness(ManagedProcess p) {
-    if (p.readinessWatcher != null && p.readinessWatcher != Thread.currentThread())
-      p.readinessWatcher.interrupt();
+    var watcher = p.readinessWatcher;
     p.readinessWatcher = null;
+    if (watcher != null && watcher != Thread.currentThread()) watcher.interrupt();
   }
 
   private final java.net.http.HttpClient healthClient =
@@ -219,19 +219,30 @@ public class ProcessManager {
     var pattern =
         check.mode().equals("log") ? com.google.re2j.Pattern.compile(check.value()) : null;
     var text = new StringBuilder();
+    String scannedRun = p.runId;
     long deadline = System.nanoTime() + check.timeoutMs() * 1_000_000L;
     try {
       while (!Thread.currentThread().isInterrupted()) {
-        synchronized (p) {
-          if (p.terminal != session || p.status != ProcessStatus.STARTING || !session.alive())
-            return;
-        }
+        String run = p.runId;
         boolean ready = false;
         if (pattern != null) {
+          long scanEnd;
+          synchronized (p) {
+            if (p.terminal != session || p.status != ProcessStatus.STARTING || !session.alive()) {
+              return;
+            }
+            // snapshot the log end so no entry append before termination
+            scanEnd = logs.cursor();
+          }
           var page = logs.getLogs(Set.of(p.config.id()), cursor, 12000, false);
-          cursor = page.cursor();
           for (var entry : page.events()) {
-            if (entry.data() == null || !Objects.equals(entry.runId(), p.runId)) continue;
+            if (entry.seq() > scanEnd) break;
+            if (entry.data() == null) continue;
+            if (!Objects.equals(entry.runId(), scannedRun)) {
+              scannedRun = entry.runId();
+              text.setLength(0);
+            }
+            if (!Objects.equals(entry.runId(), run)) continue;
             text.append(entry.data());
             if (text.length() > 65536) text.delete(0, text.length() - 65536);
             if (pattern.matcher(LogService.plain(text.toString())).find()) {
@@ -239,7 +250,12 @@ public class ProcessManager {
               break;
             }
           }
+          cursor = Math.min(page.cursor(),  scanEnd);
         } else {
+          synchronized (p) {
+            if (p.terminal != session || p.status != ProcessStatus.STARTING || !session.alive())
+              return;
+          }
           try {
             var request =
                 java.net.http.HttpRequest.newBuilder(java.net.URI.create(check.value()))
