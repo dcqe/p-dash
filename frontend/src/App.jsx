@@ -77,6 +77,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
   const [launching, setLaunching] = useState(new Set());
   const [startRipples, setStartRipples] = useState(new Set());
   const [clearAfter, setClearAfter] = useState(null);
+  const [resumeScrollKey, setResumeScrollKey] = useState(0);
   const { connection, workspaces } = dashboard;
   const commands = workspaceCommands(dashboard.commands, workspace.id);
   const visible = commands;
@@ -120,7 +121,10 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
       return Promise.all(targets.map((c) => action(c.id, type)));
     }
     await withBusy(visible.map((c) => c.id), () =>
-      restartAll(visible, api, (cursor) => flushSync(() => setClearAfter(cursor)), launch),
+      restartAll(visible, api, (cursor) => flushSync(() => {
+        setClearAfter(cursor);
+        setResumeScrollKey((key) => key + 1);
+      }), launch),
     );
   }
   async function remove(c) {
@@ -329,7 +333,7 @@ function WorkspaceDashboard({ dashboard, workspace, onSwitch, toast, setToast, s
         <div className="log-views" style={grid.style}>
           {views.map((view, index) => (
             <LogView key={view.id} view={view} index={index} style={grid.panes[view.id]} commands={commands} events={events}
-              clearAfter={clearAfter}
+              clearAfter={clearAfter} resumeScrollKey={resumeScrollKey}
               isActive={view.id === activePane} onActivate={() => setActivePane(view.id)}
               onChange={(patch) => setViews((current) => updatePane(current, view.id, patch))}
               onSplit={(direction) => {

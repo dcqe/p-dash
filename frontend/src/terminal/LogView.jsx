@@ -5,7 +5,7 @@ import LogPane from './LogPane.jsx';
 import CopyOutputButton from './CopyOutputButton.jsx';
 import LogViewHeader from './LogViewHeader.jsx';
 
-export default function LogView({ view, onChange, commands, events, clearAfter = null, isActive, index, style, onActivate, onSplit, onClose, canClose, setToast }) {
+export default function LogView({ view, onChange, commands, events, clearAfter = null, resumeScrollKey = 0, isActive, index, style, onActivate, onSplit, onClose, canClose, setToast }) {
   const { tab, query, sources } = view;
   const setTab = (tab) => onChange({ tab });
   const setQuery = (query) => onChange({ query });
@@ -27,6 +27,11 @@ export default function LogView({ view, onChange, commands, events, clearAfter =
     setAtBottom(true);
     viewportAtBottom.current = true;
   }, [tab]);
+  useEffect(() => {
+    if (!resumeScrollKey) return;
+    setPaused(false);
+    terminalRef.current?.scrollToBottom();
+  }, [resumeScrollKey]);
   useEffect(() => {
     if (!isActive) return;
     const focusFilter = (event) => {
